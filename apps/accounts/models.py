@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
-
+from django.utils.translation import gettext_lazy as _
 class UserManager(BaseUserManager):
 
     def create_user(self, email, first_name, last_name, password=None, **extra_fields):
@@ -28,16 +28,38 @@ class UserManager(BaseUserManager):
         return self.create_user(email, first_name, last_name, password, **extra_fields)
 
 class User(AbstractBaseUser, PermissionsMixin):
+    class Role(models.TextChoices):
+        STUDENT = 'Student', _('Student')
+        FACULTY = 'Faculty', _('Faculty')
+        
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
     
-    is_student = models.BooleanField(default=False)
-    is_faculty = models.BooleanField(default=False)
-    
-    is_active = models.BooleanField(default=True)  # for email verification
+    # is_student = models.BooleanField(default=False)
+    # is_faculty = models.BooleanField(default=False)
+    role = models.CharField(max_length=10, choices=Role.choices)
+    is_active = models.BooleanField(default=True)  
     is_staff = models.BooleanField(default=False)
     
+     # Faculty-specific fields
+    department = models.CharField(max_length=100, choices=[
+        ('CSE', 'CSE'),
+        ('EEE', 'EEE'),
+        ('BBA', 'BBA'),
+        ('English', 'English'),
+        ('LLB', 'LLB'),
+        ('Architecture', 'Architecture')
+    ], blank=True, null=True)
+    designation = models.CharField(max_length=100, blank=True, null=True)
+    student_id = models.CharField(max_length=20, blank=True, null=True, unique=True)
+    mobile_number = models.CharField(max_length=20, blank=True, null=True)
+    role = models.CharField(
+        max_length=10,
+        choices=Role.choices,
+        default=Role.STUDENT 
+    )
+
     date_joined = models.DateTimeField(auto_now_add=True)
     
     objects =  UserManager()

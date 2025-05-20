@@ -15,27 +15,43 @@ from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse
 
 
+# Email Sending Utility
 def send_verification_email(user, request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = email_token_generator.make_token(user)
     verify_url = request.build_absolute_uri(
         reverse('verify-email', kwargs={'uidb64': uid, 'token': token})
     )
+    
     subject = 'Verify Your Email - EduMetro'
-    message = f'Hi {user.first_name} {user.last_name}!\n\nPlease click the link below to verify your email,\n\nClick the link below to verify your email:\n{verify_url}'
-    send_mail(subject, message, 'ahramu584@gmail.com', [user.email])
+    message = (
+        f"Hi {user.first_name} {user.last_name},\n\n"
+        f"Thanks for registering on EduMetro.\n"
+        f"Please verify your email by clicking the link below:\n\n"
+        f"{verify_url}\n\n"
+        f"If you didn't request this, please ignore this email.\n\n"
+        f"Best regards,\nEduMetro Team"
+    )
+    
+    send_mail(
+        subject,
+        message,
+        'ahramu584@gmail.com',  
+        [user.email],
+        fail_silently=False,
+    )
 
-
+# Registration View
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
     
     def perform_create(self, serializer):
-        user = serializer.save()
+        user = serializer.save(is_active=False)
         send_verification_email(user, self.request)
         
-
+# JWT Token View with User Info
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -46,7 +62,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-
+# Email Verification View
 class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -60,6 +76,20 @@ class VerifyEmailView(APIView):
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return HttpResponse('Email verified successfully', status=200)
+            return HttpResponse('✅ Email verified successfully. You can now log in.', status=200)
         else:
-            return HttpResponse('Invalid activation link', status=400)
+            return HttpResponse('❌ Invalid or expired activation link.', status=400)
+
+
+# logout view
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            request.user.auth_token.delete()
+            return Response({"message": "Logged out successfully."}, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
