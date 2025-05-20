@@ -214,7 +214,7 @@ Contact author for any production deployment, contribution, or fork use.
 **Ramim Ahmed**  
 Metropolitan University  
 📧 ahramu584@gmail.com
-🌐 GitHub: [github.com/yourusername](https://github.com/ramim141)
+🌐 GitHub: [github.com/ramim141](https://github.com/ramim141)
 
 ---
 
