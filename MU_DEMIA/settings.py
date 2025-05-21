@@ -9,15 +9,16 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
 from datetime import timedelta
-from decouple import config
 import os
 from pathlib import Path
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 import environ
 env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
 import dj_database_url
 
 
@@ -103,20 +104,22 @@ WSGI_APPLICATION = 'MU_DEMIA.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL', default='postgresql://edumetro:y0DTVuoIAlwTBVPcWwxazpNMOI6Tmejl@dpg-d0mlb2u3jp1c738eqkug-a.oregon-postgres.render.com/edumetro'),
-        conn_max_age=600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'edumetro',
+        'USER': 'postgres',
+        'PASSWORD': 'password',
+        'HOST': 'localhost',  
+        'PORT': '5432',        
+    }
 }
+
+# Production database configuration
 # DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'edumetro',
-#         'USER': 'postgres',
-#         'PASSWORD': 'password',
-#         'HOST': 'localhost',  
-#         'PORT': '5432',        
-#     }
+#     'default': dj_database_url.config(
+#         default=env('DATABASE_URL', default='postgresql://edumetro:y0DTVuoIAlwTBVPcWwxazpNMOI6Tmejl@dpg-d0mlb2u3jp1c738eqkug-a.oregon-postgres.render.com/edumetro'),
+#         conn_max_age=600
+#     )
 # }
 
 
