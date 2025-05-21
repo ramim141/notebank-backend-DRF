@@ -117,7 +117,7 @@ WSGI_APPLICATION = 'MU_DEMIA.wsgi.application'
 # Production database configuration
 DATABASES = {
     'default': dj_database_url.config(
-        default=env('DATABASE_URL', default='postgresql://eduMetro:y0DTVuoIAlwTBVPcWwxazpNMOI6Tmejl@dpg-d0mlb2u3jp1c738eqkug-a.oregon-postgres.render.com/edumetro'),
+        default=env('DATABASE_URL', default='postgresql://edumetro_user:y0DTVuoIAlwTBVPcWwxazpNMOI6Tmejl@dpg-d0mlb2u3jp1c738eqkug-a.oregon-postgres.render.com/edumetro'),
         conn_max_age=600
     )
 }
