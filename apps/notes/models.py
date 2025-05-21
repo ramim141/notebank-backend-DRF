@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 User = get_user_model()
 
@@ -32,7 +33,7 @@ class Note(models.Model):
 class NoteRating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     note = models.ForeignKey(Note, on_delete=models.CASCADE, related_name='ratings')
-    rating = models.PositiveSmallIntegerField()  # 1 to 5
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])  # 1 to 5
 
     class Meta:
         unique_together = ('user', 'note')

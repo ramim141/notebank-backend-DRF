@@ -10,7 +10,4 @@ router.register(r'comments', NoteCommentViewSet)
 
 urlpatterns = router.urls
 
-urlpatterns = router.urls
-
-
 # http://127.0.0.1:8000/api/notes/<note_id>/download/
