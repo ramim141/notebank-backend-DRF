@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from datetime import timedelta
+from decouple import config
 import os
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -101,22 +102,22 @@ WSGI_APPLICATION = 'MU_DEMIA.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': dj_database_url.config(
-#         default=config('DATABASE_URL', default='postgresql://edumetro_user:y0DTVuoIAlwTBVPcWwxazpNMOI6Tmejl@dpg-d0mlb2u3jp1c738eqkug-a.oregon-postgres.render.com/edumetro'),
-#         conn_max_age=600
-#     )
-# }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'edumetro',
-        'USER': 'postgres',
-        'PASSWORD': 'password',
-        'HOST': 'localhost',  
-        'PORT': '5432',        
-    }
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL', default='postgresql://edumetro:y0DTVuoIAlwTBVPcWwxazpNMOI6Tmejl@dpg-d0mlb2u3jp1c738eqkug-a.oregon-postgres.render.com/edumetro'),
+        conn_max_age=600
+    )
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'edumetro',
+#         'USER': 'postgres',
+#         'PASSWORD': 'password',
+#         'HOST': 'localhost',  
+#         'PORT': '5432',        
+#     }
+# }
 
 
 # Password validation
