@@ -71,14 +71,15 @@ class VerifyEmailView(APIView):
             uid = urlsafe_base64_decode(uidb64).decode()
             user = get_object_or_404(User, pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return HttpResponse('Invalid activation link', status=400)
-        
+            return redirect("https://your-frontend-site.com/verify-error")  # invalid link
+
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return HttpResponse('✅ Email verified successfully. You can now log in.', status=200)
+            return redirect("https://your-frontend-site.com/login?verified=true")  # successful verification
         else:
-            return HttpResponse('❌ Invalid or expired activation link.', status=400)
+            return redirect("https://your-frontend-site.com/verify-error")  # expired or invalid token
+
 
 
 # logout view
