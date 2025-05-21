@@ -1,9 +1,12 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
+password_reset_token = PasswordResetTokenGenerator()
 from .models import User
 from django.core.mail import send_mail
 from django.urls import reverse
@@ -13,7 +16,10 @@ from rest_framework.views import APIView
 from django.shortcuts import redirect, get_object_or_404
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse
-
+from django.template.loader import render_to_string
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from rest_framework import status
 
 # Email Sending Utility
 def send_verification_email(user, request):
@@ -22,24 +28,19 @@ def send_verification_email(user, request):
     verify_url = request.build_absolute_uri(
         reverse('verify-email', kwargs={'uidb64': uid, 'token': token})
     )
-    
+
     subject = 'Verify Your Email - EduMetro'
-    message = (
-        f"Hi {user.first_name} {user.last_name},\n\n"
-        f"Thanks for registering on EduMetro.\n"
-        f"Please verify your email by clicking the link below:\n\n"
-        f"{verify_url}\n\n"
-        f"If you didn't request this, please ignore this email.\n\n"
-        f"Best regards,\nEduMetro Team"
-    )
-    
-    send_mail(
-        subject,
-        message,
-        'ahramu584@gmail.com',  
-        [user.email],
-        fail_silently=False,
-    )
+    from_email = 'EduMetro <ahramu584@gmail.com>'
+    to_email = [user.email]
+
+    html_content = render_to_string('accounts/email.html', {
+        'user': user,
+        'verify_url': verify_url,
+    })
+
+    msg = EmailMultiAlternatives(subject, '', from_email, to_email)
+    msg.attach_alternative(html_content, "text/html")
+    msg.send()
 
 # Registration View
 class RegisterView(generics.CreateAPIView):
@@ -54,9 +55,13 @@ class RegisterView(generics.CreateAPIView):
 # JWT Token View with User Info
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        user = User.objects.filter(email=attrs.get('email')).first()
+        if user and not user.is_active:
+            raise serializers.ValidationError("⚠️ Please verify your email before logging in.")
         data = super().validate(attrs)
         data['user'] = UserSerializer(self.user).data
         return data
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -94,3 +99,60 @@ class LogoutView(APIView):
             return Response({"error": str(e)}, status=400)
 
 
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Email is required"}, status=400)
+        user = User.objects.filter(email=email).first()
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = password_reset_token.make_token(user)
+            reset_url = request.build_absolute_uri(
+                reverse('password-reset-confirm', kwargs={'uidb64': uid, 'token': token})
+            )
+            # Send email (HTML and plain text both)
+            subject = "Password Reset Requested - EduMetro"
+            context = {
+                "user": user,
+                "reset_url": reset_url,
+            }
+            # Load HTML email template
+            html_content = render_to_string("emails/password_reset_email.html", context)
+            text_content = f"Hi {user.first_name},\n\nYou requested a password reset. Click the link below:\n{reset_url}\n\nIf you didn't request this, ignore this email.\nEduMetro Team"
+            
+            email_message = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email])
+            email_message.attach_alternative(html_content, "text/html")
+            email_message.send()
+
+        # We don't reveal if user exists or not for security
+        return Response({"message": "If an account with this email exists, a password reset email has been sent."})
+
+
+# Password Reset Confirm View
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, uidb64, token):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({"error": "Invalid link"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not password_reset_token.check_token(user, token):
+            return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        new_password = request.data.get('new_password')
+        if not new_password:
+            return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Password has been reset successfully."})
