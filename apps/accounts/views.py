@@ -21,6 +21,11 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from rest_framework import status
 
+from django.contrib.auth.tokens import default_token_generator
+from rest_framework.response import Response
+
+
+
 # Email Sending Utility
 def send_verification_email(user, request):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -135,24 +140,27 @@ class PasswordResetRequestView(APIView):
 
 # Password Reset Confirm View
 
-class PasswordResetConfirmView(APIView):
-    permission_classes = [permissions.AllowAny]
 
-    def post(self, request, uidb64, token):
+class PasswordResetConfirmView(APIView):
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        if new_password != confirm_password:
+            return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             uid = urlsafe_base64_decode(uidb64).decode()
             user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return Response({"error": "Invalid link"}, status=status.HTTP_400_BAD_REQUEST)
+        except (User.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "Invalid UID."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not password_reset_token.check_token(user, token):
-            return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
-
-        new_password = request.data.get('new_password')
-        if not new_password:
-            return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not default_token_generator.check_token(user, token):
+            return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(new_password)
         user.save()
 
-        return Response({"message": "Password has been reset successfully."})
+        return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
