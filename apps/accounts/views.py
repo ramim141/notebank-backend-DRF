@@ -23,7 +23,8 @@ from rest_framework import status
 
 from django.contrib.auth.tokens import default_token_generator
 from rest_framework.response import Response
-
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import RetrieveUpdateAPIView
 
 
 # Email Sending Utility
@@ -164,3 +165,11 @@ class PasswordResetConfirmView(APIView):
         user.save()
 
         return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+
+
+class ProfileView(RetrieveUpdateAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
