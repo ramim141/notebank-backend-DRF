@@ -1,11 +1,11 @@
 from rest_framework import serializers
-from .models  import User
+from .models import User
 from django.contrib.auth.password_validation import validate_password
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
-    
+
     class Meta:
         model = User
         fields = (
@@ -22,7 +22,9 @@ class RegisterSerializer(serializers.ModelSerializer):
                 if not data.get(field):
                     missing_fields.append(field)
             if missing_fields:
-                raise serializers.ValidationError({field: f"{field} is required for faculty." for field in missing_fields})
+                raise serializers.ValidationError(
+                    {field: f"{field} is required for faculty." for field in missing_fields}
+                )
             # Clear student-only fields
             data['student_id'] = None
 
@@ -34,8 +36,6 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         return data
 
-            
-    
     def create(self, validated_data):
         password = validated_data.pop('password')
         user = User(**validated_data)
@@ -46,17 +46,19 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     student_id = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
             'id', 'email', 'first_name', 'last_name', 'role',
             'department', 'designation', 'mobile_number', 'student_id'
         )
-    
+
     def get_student_id(self, obj):
         if obj.role == User.Role.STUDENT:
-            return obj.id  
+            return obj.student_id  
         return None
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         role = instance.role
@@ -73,12 +75,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    
+
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
-    new_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
     confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, data):

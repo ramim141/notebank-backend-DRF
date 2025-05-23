@@ -81,14 +81,14 @@ class VerifyEmailView(APIView):
             uid = urlsafe_base64_decode(uidb64).decode()
             user = get_object_or_404(User, pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return redirect("https://your-frontend-site.com/verify-error")  # invalid link
+            return redirect("https://edumetro-ramim-ahmeds-projects.vercel.app/verify-error")  # invalid link
 
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return redirect("https://your-frontend-site.com/login?verified=true")  # successful verification
+            return redirect("https://edumetro-ramim-ahmeds-projects.vercel.app/login?verified=true")  # successful verification
         else:
-            return redirect("https://your-frontend-site.com/verify-error")  # expired or invalid token
+            return redirect("https://edumetro-ramim-ahmeds-projects.vercel.app/verify-error")  # expired or invalid token
 
 
 
