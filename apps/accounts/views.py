@@ -86,7 +86,7 @@ class VerifyEmailView(APIView):
         if email_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return redirect("https://edumetro-ramim-ahmeds-projects.vercel.app/login?verified=true")  # successful verification
+            return redirect("https://edumetro-ramim-ahmeds-projects.vercel.app/login")  # successful verification
         else:
             return redirect("https://edumetro-ramim-ahmeds-projects.vercel.app/verify-error")  # expired or invalid token
 
