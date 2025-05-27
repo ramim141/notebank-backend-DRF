@@ -1,8 +1,28 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from taggit.managers import TaggableManager
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model() 
+
+class CustomTaggitSerializerField(serializers.Field):
+    def to_representation(self, value):
+        return list(value.names())
+
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            data = [item.strip() for item in data.split(',') if item.strip()]
+
+        if not isinstance(data, list):
+            raise serializers.ValidationError("Expected a list of strings or a comma-separated string for tags.")
+        if not all(isinstance(item, str) for item in data):
+            raise serializers.ValidationError("All tag items must be strings.")
+        return data
+
+
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
@@ -40,24 +60,34 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(student_id=value).exists():
             raise serializers.ValidationError("A user with this Student ID already exists.")
         return value
+
 class UserSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
+    skills = CustomTaggitSerializerField(required=False)
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'email', 'first_name', 'last_name', 
-            'is_email_verified', 
-            'student_id', 
-            'department', 
-            'profile_picture', 
-            'profile_picture_url' 
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'is_email_verified',
+            'student_id',
+            'department',
+            'profile_picture',
+            'profile_picture_url',
+            'bio', 'mobile_number', 'university', 'website', 'birthday', 'gender', 'skills'
         )
         read_only_fields = ('username', 'id', 'is_email_verified', 'profile_picture_url', 'student_id',)
         extra_kwargs = {
-            'profile_picture': {'write_only': True, 'required': False}, 
-            'department': {'required': False}
-            
+            'profile_picture': {'write_only': True, 'required': False},
+            'department': {'required': False},
+            'bio': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'mobile_number': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'university': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'website': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'birthday': {'required': False, 'allow_null': True},
+            'gender': {'required': False, 'allow_null': True},
         }
+            
+        
     def get_profile_picture_url(self, obj):
         request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
@@ -65,8 +95,39 @@ class UserSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.profile_picture.url)
             return obj.profile_picture.url
         return None
+    
+    def update(self, instance, validated_data):
+        logger.info(f"UserSerializer.update called for user: {instance.username}")
+        logger.info(f"Validated data received: {validated_data}")
 
+        profile_picture = validated_data.pop('profile_picture', None)
+        if profile_picture:
+            instance.profile_picture = profile_picture
+            logger.info(f"Profile picture found and popped: {profile_picture}")
 
+        skills_data = validated_data.pop('skills', None)
+        logger.info(f"Skills data popped: {skills_data}, type: {type(skills_data)}")
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+            logger.info(f"Setting attribute {attr} to {value}")
+
+        if skills_data is not None:
+            if isinstance(skills_data, list):
+                logger.info(f"Attempting to set skills: {skills_data}")
+                try:
+                    instance.skills.set(skills_data)
+                    logger.info("Skills set successfully via instance.skills.set().")
+                except Exception as e:
+                    logger.error(f"Error setting skills: {e}")
+            else:
+                logger.warning(f"Skills data is not a list: {skills_data}. Skipping setting skills.")
+        else:
+            logger.info("No skills data provided for update.")
+
+        instance.save()
+        logger.info("User instance saved.")
+        return instance
 
 class ChangePasswordSerializer(serializers.Serializer):
 
@@ -116,4 +177,5 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password1'] != attrs['new_password2']:
             raise serializers.ValidationError({"new_password2": "The two password fields didn't match."})
         return attrs
-        
+
+
