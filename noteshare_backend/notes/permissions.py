@@ -1,3 +1,4 @@
+# notes/permissions.py
 from rest_framework import permissions
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -10,8 +11,8 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return obj.uploader == request.user
 
-
-class IsRatingOwnerOrReadOnly(permissions.BasePermission):
+# StarRating এবং Comment উভয়ের জন্য এই Permission ব্যবহার করা যেতে পারে
+class IsRatingOrCommentOwnerOrReadOnly(permissions.BasePermission): # নাম পরিবর্তন
     """
     Custom permission to only allow owners of a rating/comment to edit or delete it.
     Allows read-only access for any request.

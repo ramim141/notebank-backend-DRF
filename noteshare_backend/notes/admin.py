@@ -1,23 +1,25 @@
+# notes/admin.py
 from django.contrib import admin
-from .models import Note, Rating
+# নতুন মডেলগুলি ইম্পোর্ট করুন
+from .models import Note, StarRating, Comment
 
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
     list_display = (
-        'title', 
-        'uploader', 
-        'course_name', 
-        'department_name', 
-        'semester', 
-        'download_count', 
+        'title',
+        'uploader',
+        'course_name',
+        'department_name',
+        'semester',
+        'download_count',
         'average_rating',
-        'created_at', 
+        'created_at',
         'updated_at'
     )
     list_filter = ('department_name', 'course_name', 'semester', 'uploader', 'created_at')
-    search_fields = ('title', 'description', 'tags', 'uploader__username', 'course_name', 'department_name')
-    readonly_fields = ('average_rating', 'download_count', 'created_at', 'updated_at') 
-    
+    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'course_name', 'department_name') # tags কে tags__name করা হয়েছে
+    readonly_fields = ('average_rating', 'download_count', 'created_at', 'updated_at')
+
     fieldsets = (
         (None, {
             'fields': ('title', 'uploader', 'description', 'file')
@@ -27,7 +29,7 @@ class NoteAdmin(admin.ModelAdmin):
         }),
         ('Analytics (Read-Only)', {
             'fields': ('download_count', 'average_rating'),
-            'classes': ('collapse',) 
+            'classes': ('collapse',)
         }),
         ('Timestamps (Read-Only)', {
             'fields': ('created_at', 'updated_at'),
@@ -35,29 +37,35 @@ class NoteAdmin(admin.ModelAdmin):
         }),
     )
 
-    # def formfield_for_foreignkey(self, db_field, request, **kwargs):
-    #     if db_field.name == "uploader":
-    #         kwargs["initial"] = request.user.id
-    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-
-    # def get_readonly_fields(self, request, obj=None):
-    #     if obj: 
-    #         return self.readonly_fields + ('uploader',)
-    #     return self.readonly_fields
-
-
-@admin.register(Rating)
-class RatingAdmin(admin.ModelAdmin):
-    list_display = ('note_title', 'user_username', 'stars', 'comment_summary', 'created_at')
-    list_filter = ('stars', 'user', 'note__department_name', 'created_at') 
-    search_fields = ('note__title', 'user__username', 'comment')
+# নতুন StarRatingAdmin
+@admin.register(StarRating)
+class StarRatingAdmin(admin.ModelAdmin):
+    list_display = ('note_title', 'user_username', 'stars', 'created_at')
+    list_filter = ('stars', 'user', 'note__department_name', 'created_at')
+    search_fields = ('note__title', 'user__username')
     readonly_fields = ('created_at', 'updated_at')
-
 
     def note_title(self, obj):
         return obj.note.title
-    note_title.short_description = 'Note Title' 
+    note_title.short_description = 'Note Title'
+    note_title.admin_order_field = 'note__title'
+
+    def user_username(self, obj):
+        return obj.user.username
+    user_username.short_description = 'User'
+    user_username.admin_order_field = 'user__username'
+
+# নতুন CommentAdmin
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('note_title', 'user_username', 'comment_summary', 'created_at')
+    list_filter = ('user', 'note__department_name', 'created_at')
+    search_fields = ('note__title', 'user__username', 'text')
+    readonly_fields = ('created_at', 'updated_at')
+
+    def note_title(self, obj):
+        return obj.note.title
+    note_title.short_description = 'Note Title'
     note_title.admin_order_field = 'note__title'
 
     def user_username(self, obj):
@@ -66,7 +74,7 @@ class RatingAdmin(admin.ModelAdmin):
     user_username.admin_order_field = 'user__username'
 
     def comment_summary(self, obj):
-        if obj.comment:
-            return (obj.comment[:50] + '...') if len(obj.comment) > 50 else obj.comment
+        if obj.text:
+            return (obj.text[:50] + '...') if len(obj.text) > 50 else obj.text
         return "-"
     comment_summary.short_description = 'Comment'

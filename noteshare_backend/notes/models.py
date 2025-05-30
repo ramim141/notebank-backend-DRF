@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from taggit.managers import TaggableManager
 
 
+
 def note_file_path(instance, filename):
     return f'notes/user_{instance.uploader.id}/{filename}' 
 
@@ -23,7 +24,29 @@ class Note(models.Model):
     
 
     course_name = models.CharField(max_length=100, blank=True, null=True) 
-    department_name = models.CharField(max_length=100, blank=True, null=True)
+    DEPARTMENT_CHOICES = [
+        ('CSE', 'Computer Science and Engineering'),
+        ('EEE', 'Electrical and Electronic Engineering'),
+        ('BBA', 'Bachelor of Business Administration'),
+        ('SWE', 'Software Engineering'),
+        ('Civil', 'Civil Engineering'),
+        ('Architecture', 'Architecture'),
+        ('Textile', 'Textile Engineering'),
+        ('Agriculture', 'Agriculture'),
+        ('ENG', 'English'),
+        ('ECN', 'Economics'),
+        ('PHY', 'Physics'),
+        ('ME', 'Mechanical Engineering'),
+        ('CE', 'Civil Engineering'),
+        ('IPE', 'Industrial and Production Engineering'),
+        ('Other', 'Other')
+    ]
+    department_name = models.CharField(
+        max_length=100, 
+        choices=DEPARTMENT_CHOICES,
+        blank=True, 
+        null=True
+    )
     semester = models.CharField(max_length=50, blank=True, null=True) 
     tags = TaggableManager(blank=True)
     download_count = models.PositiveIntegerField(default=0)
@@ -37,26 +60,26 @@ class Note(models.Model):
 
     @property
     def average_rating(self):
-        all_ratings = self.note_ratings.all() 
+        # এখন StarRating মডেল থেকে গড় রেটিং গণনা করা হবে
+        all_ratings = self.star_ratings.all() # related_name পরিবর্তন করা হয়েছে
         if all_ratings.exists():
             return round(sum(r.stars for r in all_ratings) / all_ratings.count(), 2)
         return 0.0
 
-class Rating(models.Model):
+class StarRating(models.Model):
     note = models.ForeignKey(
-        Note, 
-        on_delete=models.CASCADE, 
-        related_name='note_ratings'
+        Note,
+        on_delete=models.CASCADE,
+        related_name='star_ratings' # নতুন related_name
     )
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='given_ratings'
+        related_name='given_star_ratings' # নতুন related_name
     )
     stars = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)] 
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
-    comment = models.TextField(blank=True, null=True) 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -66,6 +89,27 @@ class Rating(models.Model):
 
     def __str__(self):
         return f"{self.stars} stars for '{self.note.title}' by {self.user.username}"
+
+class Comment(models.Model):
+    note = models.ForeignKey(
+        Note,
+        on_delete=models.CASCADE,
+        related_name='comments' # নতুন related_name
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='given_comments' # নতুন related_name
+    )
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        ordering = ['-created_at'] # এখানে unique_together নেই, তাই একাধিক কমেন্ট সম্ভব
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on '{self.note.title}': {self.text[:50]}..."
+
 
 
 class Like(models.Model):
