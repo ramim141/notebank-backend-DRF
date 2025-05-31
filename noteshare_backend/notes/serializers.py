@@ -11,6 +11,8 @@ User = get_user_model()
 # StarRatingSerializer
 class StarRatingSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
     user_student_id = serializers.CharField(source='user.student_id', read_only=True, allow_null=True)
 
     class Meta:
@@ -19,13 +21,15 @@ class StarRatingSerializer(serializers.ModelSerializer):
             'id',
             'user',
             'user_username',
+            'user_first_name',
+            'user_last_name',
             'user_student_id',
             'stars',
             'created_at',
             'updated_at',
             'note'
         )
-        read_only_fields = ('user_username', 'user_student_id', 'created_at', 'updated_at')
+        read_only_fields = ('user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
         extra_kwargs = {
             'user': {'write_only': True, 'required': False},
             'note': {'write_only': True, 'required': True}
@@ -35,20 +39,23 @@ class StarRatingSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_student_id = serializers.CharField(source='user.student_id', read_only=True, allow_null=True)
-
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True, allow_null=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True, allow_null=True)
     class Meta:
         model = Comment # নতুন মডেল
         fields = (
             'id',
             'user',
             'user_username',
+            'user_first_name',
+            'user_last_name',
             'user_student_id',
-            'text', # comment এর পরিবর্তে text
+            'text', 
             'created_at',
             'updated_at',
             'note'
         )
-        read_only_fields = ('user_username', 'user_student_id', 'created_at', 'updated_at')
+        read_only_fields = ('user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
         extra_kwargs = {
             'user': {'write_only': True, 'required': False},
             'note': {'write_only': True, 'required': True}
@@ -59,7 +66,8 @@ class NoteSerializer(serializers.ModelSerializer):
     uploader_username = serializers.CharField(source='uploader.username', read_only=True)
     uploader_student_id = serializers.CharField(source='uploader.student_id', read_only=True, allow_null=True)
     uploader_department = serializers.CharField(source='uploader.department', read_only=True, allow_null=True)
-
+    uploader_first_name = serializers.CharField(source='uploader.first_name', read_only=True, allow_null=True)
+    uploader_last_name = serializers.CharField(source='uploader.last_name', read_only=True, allow_null=True)
     file_url = serializers.SerializerMethodField()
     tags = TagListSerializerField(required=False)
     
@@ -79,6 +87,8 @@ class NoteSerializer(serializers.ModelSerializer):
             'id',
             'uploader',
             'uploader_username',
+            'uploader_first_name',
+            'uploader_last_name',
             'uploader_student_id',
             'uploader_department',
             'title',
@@ -96,8 +106,8 @@ class NoteSerializer(serializers.ModelSerializer):
             'is_liked_by_current_user',
             'bookmarks_count',
             'is_bookmarked_by_current_user',
-            'star_ratings', # পরিবর্তন
-            'comments',     # নতুন
+            'star_ratings', 
+            'comments',    
             'created_at',
             'updated_at',
         )
@@ -106,15 +116,14 @@ class NoteSerializer(serializers.ModelSerializer):
             'uploader_student_id',
             'uploader_department',
             'download_count',
-            'star_ratings', # পরিবর্তন
-            'comments',     # নতুন
-            'created_at',
+            'star_ratings', 
+            'comments',     
             'updated_at',
             'file_url',
             'likes_count',
             'is_liked_by_current_user',
             'bookmarks_count',
-            'is_bookmarked_by_current_user' # এখানে কমা ছিল না
+            'is_bookmarked_by_current_user' 
         )
         extra_kwargs = {
             'file': {'write_only': True, 'required': True},
