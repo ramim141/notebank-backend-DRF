@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
     'taggit',
-    'notifications',
+    
     'drf_spectacular',
     'users',
     'notes',
