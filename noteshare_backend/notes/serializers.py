@@ -239,24 +239,24 @@ class BookmarkSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class NotificationSerializer(serializers.ModelSerializer):
-    actor = serializers.StringRelatedField(read_only=True, allow_null=True)
-    target = serializers.StringRelatedField(read_only=True, allow_null=True)
-    action_object = serializers.StringRelatedField(read_only=True, allow_null=True)
+# class NotificationSerializer(serializers.ModelSerializer):
+#     actor = serializers.StringRelatedField(read_only=True, allow_null=True)
+#     target = serializers.StringRelatedField(read_only=True, allow_null=True)
+#     action_object = serializers.StringRelatedField(read_only=True, allow_null=True)
 
 
-    class Meta:
-        model = Notification
-        fields = (
-            'id',
-            'level',
-            'recipient',
-            'unread',
-            'timestamp',
-            'verb',
-            'description',
-            'actor',
-            'target',
-            'action_object',
-        )
-        read_only_fields = fields
+#     class Meta:
+#         model = Notification
+#         fields = (
+#             'id',
+#             'level',
+#             'recipient',
+#             'unread',
+#             'timestamp',
+#             'verb',
+#             'description',
+#             'actor',
+#             'target',
+#             'action_object',
+#         )
+#         read_only_fields = fields

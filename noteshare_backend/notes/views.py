@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course
-from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, NotificationSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer
+from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer
 from .permissions import IsOwnerOrReadOnly, IsRatingOrCommentOwnerOrReadOnly
 from notifications.models import Notification
 
@@ -339,48 +339,48 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user, note=note_instance)
 
 
-class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+# class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        """
-        This view should return a list of all the notifications
-        for the currently authenticated user.
-        """
-        return self.request.user.notifications.all().order_by('-timestamp')
+#     def get_queryset(self):
+#         """
+#         This view should return a list of all the notifications
+#         for the currently authenticated user.
+#         """
+#         return self.request.user.notifications.all().order_by('-timestamp')
 
-    @action(detail=False, methods=['get'], url_path='unread')
-    def unread_notifications(self, request):
-        """
-        Returns a list of unread notifications for the current user.
-        """
-        queryset = self.request.user.notifications.unread().order_by('-timestamp')
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+#     @action(detail=False, methods=['get'], url_path='unread')
+#     def unread_notifications(self, request):
+#         """
+#         Returns a list of unread notifications for the current user.
+#         """
+#         queryset = self.request.user.notifications.unread().order_by('-timestamp')
+#         page = self.paginate_queryset(queryset)
+#         if page is not None:
+#             serializer = self.get_serializer(page, many=True)
+#             return self.get_paginated_response(serializer.data)
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'], url_path='mark-all-as-read')
-    def mark_all_as_read(self, request):
-        self.request.user.notifications.mark_all_as_read()
-        return Response({"message": "All notifications marked as read."}, status=status.HTTP_200_OK)
+#     @action(detail=False, methods=['post'], url_path='mark-all-as-read')
+#     def mark_all_as_read(self, request):
+#         self.request.user.notifications.mark_all_as_read()
+#         return Response({"message": "All notifications marked as read."}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'], url_path='mark-as-read') # URL: /notifications/{pk}/mark-as-read/
-    def mark_as_read(self, request, pk=None):
-        notification = get_object_or_404(Notification, recipient=request.user, pk=pk)
-        notification.mark_as_read()
-        return Response({"message": "Notification marked as read."}, status=status.HTTP_200_OK)
+#     @action(detail=True, methods=['post'], url_path='mark-as-read') # URL: /notifications/{pk}/mark-as-read/
+#     def mark_as_read(self, request, pk=None):
+#         notification = get_object_or_404(Notification, recipient=request.user, pk=pk)
+#         notification.mark_as_read()
+#         return Response({"message": "Notification marked as read."}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'], url_path='mark-as-unread') # URL: /notifications/{pk}/mark-as-unread/
-    def mark_as_unread(self, request, pk=None):
-        notification = get_object_or_404(Notification, recipient=request.user, pk=pk)
-        notification.mark_as_unread()
-        return Response({"message": "Notification marked as unread."}, status=status.HTTP_200_OK)
+#     @action(detail=True, methods=['post'], url_path='mark-as-unread') # URL: /notifications/{pk}/mark-as-unread/
+#     def mark_as_unread(self, request, pk=None):
+#         notification = get_object_or_404(Notification, recipient=request.user, pk=pk)
+#         notification.mark_as_unread()
+#         return Response({"message": "Notification marked as unread."}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['get'], url_path='unread-count')
-    def unread_count(self, request):
-        count = self.request.user.notifications.unread().count()
-        return Response({"unread_count": count}, status=status.HTTP_200_OK)
+#     @action(detail=False, methods=['get'], url_path='unread-count')
+#     def unread_count(self, request):
+#         count = self.request.user.notifications.unread().count()
+#         return Response({"unread_count": count}, status=status.HTTP_200_OK)
