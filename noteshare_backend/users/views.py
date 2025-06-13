@@ -205,7 +205,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
             print("CRITICAL: FRONTEND_URL is not set in settings.py. Password reset emails will not have correct links.")
             return Response({"detail": "Server configuration error: Essential URL for password reset is missing."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        password_reset_url = f"{frontend_url}/auth/reset-password/{uidb64}/{token}/"
+        password_reset_url = f"{frontend_url}/reset-password/{uidb64}/{token}/"
 
         email_subject = 'Password Reset Request for NoteShare'
 

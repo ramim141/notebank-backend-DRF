@@ -2,11 +2,36 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from .models import Note, StarRating, Comment, Like, Bookmark # নতুন মডেল ইম্পোর্ট করুন
+from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course
 from taggit.serializers import (TagListSerializerField, TaggitSerializer)
 from notifications.models import Notification
 
 User = get_user_model()
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ['id', 'name']
+
+# notes/serializers.py
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ['id', 'name']
+
+class CourseSerializer(serializers.ModelSerializer):
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    class Meta:
+        model = Course
+        fields = ['id', 'name', 'department', 'department_name']
+        # extra_kwargs = {                 # ❌ এই ব্লকটি সম্পূর্ণভাবে সরিয়ে দিন
+        #     'department': {'write_only': True}
+        # }
+        # অথবা শুধু 'write_only' ট্রু কে False বা সরিয়ে দিন:
+        # extra_kwargs = {
+        #     'department': {'write_only': False} # অথবা এই লাইনটিই সরিয়ে দিন
+        # }
 
 # StarRatingSerializer
 class StarRatingSerializer(serializers.ModelSerializer):
@@ -16,7 +41,7 @@ class StarRatingSerializer(serializers.ModelSerializer):
     user_student_id = serializers.CharField(source='user.student_id', read_only=True, allow_null=True)
 
     class Meta:
-        model = StarRating # মডেল পরিবর্তন করা হয়েছে
+        model = StarRating 
         fields = (
             'id',
             'user',
@@ -35,14 +60,14 @@ class StarRatingSerializer(serializers.ModelSerializer):
             'note': {'write_only': True, 'required': True}
         }
 
-# CommentSerializer
+
 class CommentSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_student_id = serializers.CharField(source='user.student_id', read_only=True, allow_null=True)
     user_first_name = serializers.CharField(source='user.first_name', read_only=True, allow_null=True)
     user_last_name = serializers.CharField(source='user.last_name', read_only=True, allow_null=True)
     class Meta:
-        model = Comment # নতুন মডেল
+        model = Comment 
         fields = (
             'id',
             'user',
@@ -70,16 +95,20 @@ class NoteSerializer(serializers.ModelSerializer):
     uploader_last_name = serializers.CharField(source='uploader.last_name', read_only=True, allow_null=True)
     file_url = serializers.SerializerMethodField()
     tags = TagListSerializerField(required=False)
+    department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), required=False, allow_null=True)
+    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=False, allow_null=True)
+
+    department_name = serializers.CharField(source='department.name', read_only=True)
+    course_name = serializers.CharField(source='course.name', read_only=True)
     
-    # রেটিং এবং কমেন্টের জন্য আলাদা ফিল্ড
-    star_ratings = StarRatingSerializer(many=True, read_only=True) # related_name অনুযায়ী
-    comments = CommentSerializer(many=True, read_only=True) # related_name অনুযায়ী
+    star_ratings = StarRatingSerializer(many=True, read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
     
-    average_rating = serializers.FloatField(read_only=True)
-    likes_count = serializers.SerializerMethodField()
-    is_liked_by_current_user = serializers.SerializerMethodField()
-    bookmarks_count = serializers.SerializerMethodField()
-    is_bookmarked_by_current_user = serializers.SerializerMethodField()
+    average_rating = serializers.FloatField(source='calculated_average_rating', read_only=True)
+    likes_count = serializers.IntegerField(source='calculated_likes_count', read_only=True)
+    is_liked_by_current_user = serializers.BooleanField(source='is_liked_by_current_user_annotated', read_only=True)
+    bookmarks_count = serializers.IntegerField(source='calculated_bookmarks_count', read_only=True)
+    is_bookmarked_by_current_user = serializers.BooleanField(source='is_bookmarked_by_current_user_annotated', read_only=True)
 
     class Meta:
         model = Note
@@ -95,11 +124,13 @@ class NoteSerializer(serializers.ModelSerializer):
             'description',
             'file_url',
             'file',
+            'course',
+            'department',
             'course_name',
             'department_name',
             'semester',
             'tags',
-
+            'is_approved',
             'download_count',
             'average_rating',
             'likes_count',
@@ -123,11 +154,16 @@ class NoteSerializer(serializers.ModelSerializer):
             'likes_count',
             'is_liked_by_current_user',
             'bookmarks_count',
-            'is_bookmarked_by_current_user' 
+            'is_bookmarked_by_current_user' ,
+            'is_approved',
+            'department_name',
+            'course_name',
         )
         extra_kwargs = {
             'file': {'write_only': True, 'required': True},
-            'uploader': {'write_only': True, 'required': False}
+            'uploader': {'write_only': True, 'required': False},
+            'course': {'required': False, 'allow_null': True}, 
+            'department': {'required': False, 'allow_null': True} 
         }
 
     def get_file_url(self, obj):

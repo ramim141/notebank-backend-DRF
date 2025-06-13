@@ -1,0 +1,14 @@
+# notes/emails/note_approved_email.txt
+Hi {{ user.username }},
+
+Good news! Your note titled "{{ note.title }}" has been approved by our team.
+
+It's now publicly visible on NoteShare and ready for others to discover!
+
+You can view your approved note here:
+{{ note_detail_url }}
+
+Thank you for contributing to NoteShare!
+
+Best regards,
+The NoteShare Team

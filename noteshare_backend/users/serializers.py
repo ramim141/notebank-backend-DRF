@@ -8,6 +8,10 @@ logger = logging.getLogger(__name__)
 
 User = get_user_model() 
 
+
+
+
+
 class CustomTaggitSerializerField(serializers.Field):
     def to_representation(self, value):
         return list(value.names())

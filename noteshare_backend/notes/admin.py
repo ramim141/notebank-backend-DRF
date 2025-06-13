@@ -1,31 +1,47 @@
 # notes/admin.py
 from django.contrib import admin
-# নতুন মডেলগুলি ইম্পোর্ট করুন
-from .models import Note, StarRating, Comment
+
+from .models import Note, StarRating, Comment, Department, Course
+
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'id') 
+    search_fields = ('name',)
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = ('name', 'department', 'id')
+    list_filter = ('department',)
+    search_fields = ('name', 'department__name')
+
+
+
 
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
     list_display = (
         'title',
         'uploader',
-        'course_name',
-        'department_name',
+        'course',
+        'department',
         'semester',
         'download_count',
         'average_rating',
+        'is_approved',
         'created_at',
         'updated_at'
     )
-    list_filter = ('department_name', 'course_name', 'semester', 'uploader', 'created_at')
-    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'course_name', 'department_name') # tags কে tags__name করা হয়েছে
+    list_filter = ('department', 'course', 'semester', 'uploader', 'is_approved', 'created_at')
+    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'course__name', 'department__name')
     readonly_fields = ('average_rating', 'download_count', 'created_at', 'updated_at')
 
     fieldsets = (
         (None, {
-            'fields': ('title', 'uploader', 'description', 'file')
+            'fields': ('title', 'uploader', 'description', 'file', 'is_approved')
         }),
         ('Categorization', {
-            'fields': ('course_name', 'department_name', 'semester', 'tags')
+            'fields': ('course', 'department', 'semester', 'tags') 
         }),
         ('Analytics (Read-Only)', {
             'fields': ('download_count', 'average_rating'),
@@ -37,12 +53,12 @@ class NoteAdmin(admin.ModelAdmin):
         }),
     )
 
-# নতুন StarRatingAdmin
+
 @admin.register(StarRating)
 class StarRatingAdmin(admin.ModelAdmin):
     list_display = ('note_title', 'user_username', 'stars', 'created_at')
-    list_filter = ('stars', 'user', 'note__department_name', 'created_at')
-    search_fields = ('note__title', 'user__username')
+    list_filter = ('stars', 'user', 'note__department__name', 'created_at')
+    search_fields = ('note__title', 'user__username', 'note__department__name')
     readonly_fields = ('created_at', 'updated_at')
 
     def note_title(self, obj):
@@ -59,8 +75,8 @@ class StarRatingAdmin(admin.ModelAdmin):
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('note_title', 'user_username', 'comment_summary', 'created_at')
-    list_filter = ('user', 'note__department_name', 'created_at')
-    search_fields = ('note__title', 'user__username', 'text')
+    list_filter = ('user', 'note__department__name', 'created_at')
+    search_fields = ('note__title', 'user__username', 'text', 'note__department__name')
     readonly_fields = ('created_at', 'updated_at')
 
     def note_title(self, obj):

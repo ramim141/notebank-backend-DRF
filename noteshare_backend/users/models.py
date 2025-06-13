@@ -9,7 +9,7 @@ GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
         ('O', 'Other'),
-        ('P', 'Prefer not to say'),
+   
     ]
 
 def user_profile_picture_path(instance, filename):
@@ -54,7 +54,7 @@ class User(AbstractUser):
     university = models.CharField(max_length=255, blank=True, null=True)
     website = models.URLField(max_length=255, blank=True, null=True, help_text="Personal or professional website URL.")
     birthday = models.DateField(blank=True, null=True)
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True, null=True)
+    gender = models.CharField(max_length=100, choices=GENDER_CHOICES, blank=True, null=True)
     skills = TaggableManager(blank=True, help_text="A comma-separated list of skills (e.g., Python, Django, React).")
     
     def __str__(self):

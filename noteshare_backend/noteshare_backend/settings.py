@@ -13,15 +13,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from decouple import config 
 from pathlib import Path
+from datetime import timedelta
+import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 
 SECRET_KEY = config('SECRET_KEY')
 
@@ -91,12 +88,28 @@ AUTH_USER_MODEL = 'users.User'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': config('DB_NAME'),
+#         'USER': config('DB_USER'),
+#         'PASSWORD': config('DB_PASSWORD'),
+#         'HOST': config('DB_HOST'),  
+#         'PORT': config('DB_PORT', default='5432'),
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.parse(config('DATABASE_URL'))
 }
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -149,16 +162,17 @@ SIMPLE_JWT = {
 
 
 
-BASE_API_URL = "http://127.0.0.1:8000" # ডেভেলপমেন্টের জন্য
+BASE_API_URL = "http://127.0.0.1:8000" 
 
-FRONTEND_URL = "http://localhost:3000" # আপনার React অ্যাপ যে URL-এ চলবে
+FRONTEND_URL = "http://localhost:5174" 
 
 # CORS Settings
-CORS_ALLOW_ALL_ORIGINS = True # ডেভেলপমেন্টের জন্য True, প্রোডাকশনে False করে নিচেরটা ব্যবহার করুন
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",  # আপনার React অ্যাপ যে পোর্টে চলবে
-#     "http://127.0.0.1:3000", # আপনার React অ্যাপ যে পোর্টে চলবে
-# ]
+# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    # "https://your-frontend.onrender.com",  
+    "http://localhost:5174",
+    "http://127.0.0.1:3000",
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -191,6 +205,64 @@ USE_I18N = True
 USE_TZ = True
 
 
+
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'verbose': {
+#             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+#             'style': '{',
+#         },
+#         'simple': {
+#             'format': '{levelname} {message}',
+#             'style': '{',
+#         },
+#     },
+#     'filters': {
+#         'require_debug_true': {
+#             '()': 'django.utils.log.RequireDebugTrue',
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'level': 'INFO',
+#             'filters': ['require_debug_true'] if DEBUG else [], # Debug True হলে শুধু console এ দেখাবে
+#             'class': 'logging.StreamHandler',
+#             'formatter': 'simple' if DEBUG else 'verbose',
+#         },
+#         'file': {
+#             'level': 'INFO', # প্রোডাকশনে INFO বা WARNING লেভেল রাখুন
+#             'class': 'logging.handlers.RotatingFileHandler',
+#             'filename': BASE_DIR / 'logs' / 'noteshare.log', # logs ডিরেক্টরি তৈরি করুন
+#             'maxBytes': 1024*1024*5, # 5 MB
+#             'backupCount': 5, # 5টি ফাইল পর্যন্ত ব্যাকআপ রাখবে
+#             'formatter': 'verbose',
+#         },
+#         'mail_admins': {
+#             'level': 'ERROR',
+#             'class': 'django.utils.log.AdminEmailHandler',
+#             'include_html': True,
+#         }
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console', 'file'],
+#             'level': 'INFO',
+#             'propagate': True,
+#         },
+#         'users': { # আপনার কাস্টম অ্যাপের জন্য
+#             'handlers': ['console', 'file', 'mail_admins'],
+#             'level': 'INFO' if DEBUG else 'WARNING', # প্রোডাকশনে WARNING বা ERROR রাখুন
+#             'propagate': False,
+#         },
+#         'notes': { # আপনার কাস্টম অ্যাপের জন্য
+#             'handlers': ['console', 'file', 'mail_admins'],
+#             'level': 'INFO' if DEBUG else 'WARNING', # প্রোডাকশনে WARNING বা ERROR রাখুন
+#             'propagate': False,
+#         },
+#     }
+# }
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 

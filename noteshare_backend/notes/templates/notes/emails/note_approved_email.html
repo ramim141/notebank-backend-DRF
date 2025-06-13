@@ -1,0 +1,14 @@
+<!-- notes/emails/note_approved_email.html -->
+<p>Hi {{ user.username }},</p>
+
+<p>Good news! Your note titled <strong>"{{ note.title }}"</strong> has been approved by our team.</p>
+
+<p>It's now publicly visible on NoteShare and ready for others to discover!</p>
+
+<p>You can view your approved note here:</p>
+<p><a href="{{ note_detail_url }}">View My Note</a></p>
+
+<p>Thank you for contributing to NoteShare!</p>
+
+<p>Best regards,<br>
+The NoteShare Team</p>

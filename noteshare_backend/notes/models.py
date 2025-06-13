@@ -8,6 +8,34 @@ from taggit.managers import TaggableManager
 def note_file_path(instance, filename):
     return f'notes/user_{instance.uploader.id}/{filename}' 
 
+
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class Course(models.Model):
+    name = models.CharField(max_length=100)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='courses')
+
+
+    class Meta:
+        unique_together = ('name', 'department')
+        
+        ordering = ['name']
+
+    def __str__(self):
+        return f'{self.department.name} - {self.name}'
+    
+
+
+
+
+
 class Note(models.Model):
     uploader = models.ForeignKey(
          settings.AUTH_USER_MODEL, 
@@ -22,31 +50,11 @@ class Note(models.Model):
 
     file = models.FileField(upload_to=note_file_path) 
     
+    is_approved = models.BooleanField(default=False)
 
-    course_name = models.CharField(max_length=100, blank=True, null=True) 
-    DEPARTMENT_CHOICES = [
-        ('CSE', 'Computer Science and Engineering'),
-        ('EEE', 'Electrical and Electronic Engineering'),
-        ('BBA', 'Bachelor of Business Administration'),
-        ('SWE', 'Software Engineering'),
-        ('Civil', 'Civil Engineering'),
-        ('Architecture', 'Architecture'),
-        ('Textile', 'Textile Engineering'),
-        ('Agriculture', 'Agriculture'),
-        ('ENG', 'English'),
-        ('ECN', 'Economics'),
-        ('PHY', 'Physics'),
-        ('ME', 'Mechanical Engineering'),
-        ('CE', 'Civil Engineering'),
-        ('IPE', 'Industrial and Production Engineering'),
-        ('Other', 'Other')
-    ]
-    department_name = models.CharField(
-        max_length=100, 
-        choices=DEPARTMENT_CHOICES,
-        blank=True, 
-        null=True
-    )
+    course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
+    
     semester = models.CharField(max_length=50, blank=True, null=True) 
     tags = TaggableManager(blank=True)
     download_count = models.PositiveIntegerField(default=0)
@@ -60,8 +68,8 @@ class Note(models.Model):
 
     @property
     def average_rating(self):
-        # এখন StarRating মডেল থেকে গড় রেটিং গণনা করা হবে
-        all_ratings = self.star_ratings.all() # related_name পরিবর্তন করা হয়েছে
+    
+        all_ratings = self.star_ratings.all() 
         if all_ratings.exists():
             return round(sum(r.stars for r in all_ratings) / all_ratings.count(), 2)
         return 0.0
@@ -70,12 +78,12 @@ class StarRating(models.Model):
     note = models.ForeignKey(
         Note,
         on_delete=models.CASCADE,
-        related_name='star_ratings' # নতুন related_name
+        related_name='star_ratings' 
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='given_star_ratings' # নতুন related_name
+        related_name='given_star_ratings' 
     )
     stars = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)]
@@ -94,18 +102,20 @@ class Comment(models.Model):
     note = models.ForeignKey(
         Note,
         on_delete=models.CASCADE,
-        related_name='comments' # নতুন related_name
+        related_name='comments'
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='given_comments' # নতুন related_name
+        related_name='given_comments'
     )
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
-        ordering = ['-created_at'] # এখানে unique_together নেই, তাই একাধিক কমেন্ট সম্ভব
+        ordering = ['-created_at']
+        unique_together = ('note', 'user')
 
     def __str__(self):
         return f"Comment by {self.user.username} on '{self.note.title}': {self.text[:50]}..."
