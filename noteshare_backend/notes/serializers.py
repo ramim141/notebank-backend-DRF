@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course
 from taggit.serializers import (TagListSerializerField, TaggitSerializer)
-from notifications.models import Notification
+
 
 User = get_user_model()
 

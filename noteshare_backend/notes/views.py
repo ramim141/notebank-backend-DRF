@@ -10,7 +10,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer
 from .permissions import IsOwnerOrReadOnly, IsRatingOrCommentOwnerOrReadOnly
-from notifications.models import Notification
+
 
 from django.db.models import Avg, Count, Case, When, BooleanField, F, Value 
 from django.db.models.functions import Coalesce
