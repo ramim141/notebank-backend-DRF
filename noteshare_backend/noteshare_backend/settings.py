@@ -179,6 +179,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5174",
     "https://edumetro.onrender.com",  # Production frontend URL
 ]
+CSRF_TRUSTED_ORIGINS = [
+    'https://edumetro.onrender.com',
+    'http://localhost:5174',
+    'http://127.0.0.1:8000',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
