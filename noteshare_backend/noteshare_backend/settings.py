@@ -162,7 +162,7 @@ SIMPLE_JWT = {
 
 
 
-BASE_API_URL = "http://127.0.0.1:8000" 
+BASE_API_URL = "https://edumetro.onrender.com" 
 
 FRONTEND_URL = "http://localhost:5174" 
 
@@ -171,7 +171,7 @@ FRONTEND_URL = "http://localhost:5174"
 CORS_ALLOWED_ORIGINS = [
     # "https://your-frontend.onrender.com",  
     "http://localhost:5174",
-    "http://127.0.0.1:3000",
+    "https://edumetro.onrender.com",  # Production frontend URL
 ]
 
 # Password validation
