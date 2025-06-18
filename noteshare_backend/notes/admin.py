@@ -1,7 +1,7 @@
 # notes/admin.py
 from django.contrib import admin
 
-from .models import Note, StarRating, Comment, Department, Course
+from .models import Note, StarRating, Comment, Department, Course, NoteCategory
 
 
 @admin.register(Department)
@@ -15,7 +15,10 @@ class CourseAdmin(admin.ModelAdmin):
     list_filter = ('department',)
     search_fields = ('name', 'department__name')
 
-
+@admin.register(NoteCategory)
+class NoteCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
+    search_fields = ('name',)
 
 
 @admin.register(Note)
@@ -23,6 +26,7 @@ class NoteAdmin(admin.ModelAdmin):
     list_display = (
         'title',
         'uploader',
+        'category',
         'course',
         'department',
         'semester',
@@ -32,8 +36,8 @@ class NoteAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at'
     )
-    list_filter = ('department', 'course', 'semester', 'uploader', 'is_approved', 'created_at')
-    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'course__name', 'department__name')
+    list_filter = ('category', 'department', 'course', 'semester', 'uploader', 'is_approved', 'created_at')
+    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'category__name', 'course__name', 'department__name')
     readonly_fields = ('average_rating', 'download_count', 'created_at', 'updated_at')
 
     fieldsets = (
@@ -41,7 +45,7 @@ class NoteAdmin(admin.ModelAdmin):
             'fields': ('title', 'uploader', 'description', 'file', 'is_approved')
         }),
         ('Categorization', {
-            'fields': ('course', 'department', 'semester', 'tags') 
+            'fields': ('category', 'course', 'department', 'semester', 'tags') 
         }),
         ('Analytics (Read-Only)', {
             'fields': ('download_count', 'average_rating'),

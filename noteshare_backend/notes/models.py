@@ -32,7 +32,16 @@ class Course(models.Model):
         return f'{self.department.name} - {self.name}'
     
 
+class NoteCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
 
+    class Meta:
+        verbose_name_plural = "Note Categories"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 
@@ -52,6 +61,7 @@ class Note(models.Model):
     
     is_approved = models.BooleanField(default=False)
 
+    category = models.ForeignKey(NoteCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
     course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
     

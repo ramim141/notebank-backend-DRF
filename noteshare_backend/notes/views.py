@@ -7,8 +7,8 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course
-from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer
+from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory
+from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer
 from .permissions import IsOwnerOrReadOnly, IsRatingOrCommentOwnerOrReadOnly
 
 
@@ -21,7 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 
-
+class NoteCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Provides a read-only API endpoint for Note Categories.
+    """
+    queryset = NoteCategory.objects.all().order_by('name')
+    serializer_class = NoteCategorySerializer
+    permission_classes = [permissions.AllowAny]
 
 
 class NoteViewSet(viewsets.ModelViewSet):
@@ -30,6 +36,7 @@ class NoteViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = {
+        'category__name': ['exact', 'icontains'],
         'department__name': ['exact', 'icontains'],
         'course__name': ['exact', 'icontains'],
         'semester': ['exact', 'icontains'],
@@ -42,6 +49,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         'title',
         'tags__name',
         'description',
+        'category__name',
         'course__name',
         'department__name'
     ]
@@ -63,7 +71,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Note.objects.all()
 
-        queryset = queryset.select_related('uploader', 'department', 'course').prefetch_related(
+        queryset = queryset.select_related('uploader', 'department', 'course', 'category').prefetch_related(
             'star_ratings',
             'comments',
             'likes',

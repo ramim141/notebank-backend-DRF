@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course
+from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory
 from taggit.serializers import (TagListSerializerField, TaggitSerializer)
 
 
@@ -32,6 +32,14 @@ class CourseSerializer(serializers.ModelSerializer):
         # extra_kwargs = {
         #     'department': {'write_only': False} # অথবা এই লাইনটিই সরিয়ে দিন
         # }
+
+
+class NoteCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NoteCategory
+        fields = ['id', 'name', 'description']
+
+
 
 # StarRatingSerializer
 class StarRatingSerializer(serializers.ModelSerializer):
@@ -97,7 +105,8 @@ class NoteSerializer(serializers.ModelSerializer):
     tags = TagListSerializerField(required=False)
     department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), required=False, allow_null=True)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=False, allow_null=True)
-
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=NoteCategory.objects.all(), required=False, allow_null=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     course_name = serializers.CharField(source='course.name', read_only=True)
     
@@ -125,6 +134,8 @@ class NoteSerializer(serializers.ModelSerializer):
             'file_url',
             'file',
             'course',
+            'category',
+            'category_name',
             'department',
             'course_name',
             'department_name',
@@ -157,11 +168,13 @@ class NoteSerializer(serializers.ModelSerializer):
             'is_bookmarked_by_current_user' ,
             'is_approved',
             'department_name',
+            'category_name',
             'course_name',
         )
         extra_kwargs = {
             'file': {'write_only': True, 'required': True},
             'uploader': {'write_only': True, 'required': False},
+            'category': {'required': True, 'allow_null': False},
             'course': {'required': False, 'allow_null': True}, 
             'department': {'required': False, 'allow_null': True} 
         }

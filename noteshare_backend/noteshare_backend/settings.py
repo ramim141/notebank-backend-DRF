@@ -94,12 +94,12 @@ AUTH_USER_MODEL = 'users.User'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # DATABASES = {
 #     'default': {
@@ -112,9 +112,9 @@ AUTH_USER_MODEL = 'users.User'
 #     }
 # }
 
-DATABASES = {
-    'default': dj_database_url.parse(config('DATABASE_URL'))
-}
+# DATABASES = {
+#     'default': dj_database_url.parse(config('DATABASE_URL'))
+# }
 
 
 REST_FRAMEWORK = {
@@ -168,7 +168,8 @@ SIMPLE_JWT = {
 
 
 
-BASE_API_URL = "https://edumetro.onrender.com" 
+# BASE_API_URL = "https://edumetro.onrender.com" 
+BASE_API_URL = "http://127.0.0.1:8000"  
 
 FRONTEND_URL = "http://localhost:5173" 
 
@@ -178,6 +179,7 @@ CORS_ALLOWED_ORIGINS = [
     # "https://your-frontend.onrender.com",  
     "http://localhost:5173",
     "https://edumetro.onrender.com",  # Production frontend URL
+    "http://127.0.0.1:8000",  # Local development URL
 ]
 CSRF_TRUSTED_ORIGINS = [
     'https://edumetro.onrender.com',
