@@ -26,10 +26,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=True, cast=bool)
 # settings.py
 ALLOWED_HOSTS = [
-    'edumetro.onrender.com',
-  
-    '127.0.0.1',
-    'localhost',
+    "*"
 ]
 
 
@@ -168,8 +165,8 @@ SIMPLE_JWT = {
 
 
 
-# BASE_API_URL = "https://edumetro.onrender.com" 
-BASE_API_URL = "http://127.0.0.1:8000"  
+BASE_API_URL = "https://edumetro.onrender.com" 
+# BASE_API_URL = "http://127.0.0.1:8000"  
 
 FRONTEND_URL = "http://localhost:5173" 
 
