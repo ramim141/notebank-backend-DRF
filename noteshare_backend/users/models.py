@@ -3,7 +3,7 @@ from django.db import models
 import uuid 
 from django.core.validators import RegexValidator
 from taggit.managers import TaggableManager
-
+from notes.models import Department
 
 GENDER_CHOICES = [
         ('M', 'Male'),
@@ -38,7 +38,17 @@ class User(AbstractUser):
         blank=False,  
 
     )
+    # department = models.ForeignKey(
+    #     Department, 
+    #     on_delete=models.SET_NULL, 
+    #     null=True, 
+    #     blank=True,
+    #     related_name='users',
+    #     help_text="User's primary department"
+    # )
     department = models.CharField(max_length=100, blank=True, null=True, help_text="User's primary department")
+    batch = models.CharField(max_length=20, blank=True, null=True)
+    section = models.CharField(max_length=10, blank=True, null=True)
     bio = models.TextField(max_length=500, blank=True, null=True, help_text="A short biography about the user.")
     mobile_number_validator = RegexValidator(
         regex=r'^\+?(\d{1,3})?\d{9,15}$', 

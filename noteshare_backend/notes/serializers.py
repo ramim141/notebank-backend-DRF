@@ -2,11 +2,39 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory, NoteRequest
+from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory, NoteRequest,Faculty,Contributor
 from taggit.serializers import (TagListSerializerField, TaggitSerializer)
 
 
 User = get_user_model()
+
+
+class ContributorSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    batch = serializers.CharField(source='user.batch', read_only=True)
+    section = serializers.CharField(source='user.section', read_only=True)
+    
+    department_name = serializers.CharField(source='user.department.name', read_only=True, allow_null=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = Contributor
+        fields = [
+            'full_name',
+            'batch',
+            'section',
+            'department_name',
+            'email',
+            'note_contribution_count',
+            'average_star_rating',
+            'updated_at',
+        ]
+
+
+class FacultySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Faculty
+        fields = ['id', 'name']
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,8 +135,10 @@ class NoteSerializer(serializers.ModelSerializer):
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=False, allow_null=True)
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     category = serializers.PrimaryKeyRelatedField(queryset=NoteCategory.objects.all(), required=False, allow_null=True)
+    faculty = serializers.PrimaryKeyRelatedField(queryset=Faculty.objects.all(), required=False, allow_null=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     course_name = serializers.CharField(source='course.name', read_only=True)
+    faculty_name = serializers.CharField(source='faculty.name', read_only=True, allow_null=True)
     
     star_ratings = StarRatingSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
@@ -133,6 +163,8 @@ class NoteSerializer(serializers.ModelSerializer):
             'description',
             'file_url',
             'file',
+            'faculty',     
+            'faculty_name', 
             'course',
             'category',
             'category_name',
@@ -170,13 +202,15 @@ class NoteSerializer(serializers.ModelSerializer):
             'department_name',
             'category_name',
             'course_name',
+            'faculty_name',
         )
         extra_kwargs = {
             'file': {'write_only': True, 'required': True},
             'uploader': {'write_only': True, 'required': False},
             'category': {'required': True, 'allow_null': False},
             'course': {'required': False, 'allow_null': True}, 
-            'department': {'required': False, 'allow_null': True} 
+            'department': {'required': False, 'allow_null': True},
+            'faculty': {'required': False, 'allow_null': True}
         }
 
     def get_file_url(self, obj):
@@ -219,7 +253,7 @@ class NoteSerializer(serializers.ModelSerializer):
         return instance
 
 
-# LikeSerializer এবং BookmarkSerializer একই থাকবে
+
 class LikeSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     note_title = serializers.CharField(source='note.title', read_only=True)
@@ -276,10 +310,7 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
 
 class NoteRequestSerializer(serializers.ModelSerializer):
-    """
-    NoteRequest মডেলের জন্য সিরিয়ালাইজার।
-    """
-    # ব্যবহারকারীর নাম দেখানোর জন্য একটি রিড-অনলি ফিল্ড
+
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_full_name = serializers.CharField(source='user.get_full_name', read_only=True)
     user_student_id = serializers.CharField(source='user.student_id', read_only=True)
@@ -288,10 +319,10 @@ class NoteRequestSerializer(serializers.ModelSerializer):
         model = NoteRequest
         fields = [
             'id', 
-            'user',              # ID হিসেবে থাকবে
-            'user_username',     # শুধু দেখানোর জন্য
-            'user_full_name',    # Frontend-এ নাম দেখানোর জন্য
-            'user_student_id',   # Frontend-এ স্টুডেন্ট আইডি দেখানোর জন্য
+            'user',             
+            'user_username',     
+            'user_full_name',    
+            'user_student_id',   
             'course_name', 
             'department_name', 
             'message', 

@@ -1,8 +1,12 @@
 # notes/admin.py
 from django.contrib import admin
 
-from .models import Note, StarRating, Comment, Department, Course, NoteCategory,NoteRequest
+from .models import Note, StarRating, Comment, Department, Course, NoteCategory,NoteRequest, Faculty, Contributor
 
+@admin.register(Faculty)
+class FacultyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'id')
+    search_fields = ('name',)
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
@@ -29,6 +33,7 @@ class NoteAdmin(admin.ModelAdmin):
         'category',
         'course',
         'department',
+        'faculty',
         'semester',
         'download_count',
         'average_rating',
@@ -36,8 +41,8 @@ class NoteAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at'
     )
-    list_filter = ('category', 'department', 'course', 'semester', 'uploader', 'is_approved', 'created_at')
-    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'category__name', 'course__name', 'department__name')
+    list_filter = ('category', 'department', 'faculty','course', 'semester', 'uploader', 'is_approved', 'created_at')
+    search_fields = ('title', 'description', 'tags__name', 'uploader__username', 'category__name', 'course__name', 'department__name', 'faculty__name', 'semester' )
     readonly_fields = ('average_rating', 'download_count', 'created_at', 'updated_at')
 
     fieldsets = (
@@ -45,7 +50,7 @@ class NoteAdmin(admin.ModelAdmin):
             'fields': ('title', 'uploader', 'description', 'file', 'is_approved')
         }),
         ('Categorization', {
-            'fields': ('category', 'course', 'department', 'semester', 'tags') 
+            'fields': ('category', 'faculty', 'course', 'department', 'semester', 'tags') 
         }),
         ('Analytics (Read-Only)', {
             'fields': ('download_count', 'average_rating'),
@@ -75,7 +80,6 @@ class StarRatingAdmin(admin.ModelAdmin):
     user_username.short_description = 'User'
     user_username.admin_order_field = 'user__username'
 
-# নতুন CommentAdmin
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('note_title', 'user_username', 'comment_summary', 'created_at')
@@ -105,13 +109,22 @@ class CommentAdmin(admin.ModelAdmin):
 class NoteRequestAdmin(admin.ModelAdmin):
     list_display = ('course_name', 'user', 'department_name', 'status', 'created_at')
     list_filter = ('status', 'department_name', 'created_at')
-    list_editable = ('status',) # লিস্ট থেকেই স্ট্যাটাস পরিবর্তন করার সুবিধা
+    list_editable = ('status',) 
     search_fields = ('course_name', 'department_name', 'user__username', 'user__student_id')
     readonly_fields = ('user', 'course_name', 'department_name', 'message', 'created_at', 'updated_at')
     
     def get_readonly_fields(self, request, obj=None):
-        # যদি নতুন অবজেক্ট তৈরি করা হয়, তাহলে কোনো ফিল্ড রিড-অনলি থাকবে না
         if obj is None:
             return ()
-        # যদি বিদ্যমান অবজেক্ট এডিট করা হয়, তাহলে কিছু ফিল্ড রিড-অনলি থাকবে
         return self.readonly_fields
+
+
+
+@admin.register(Contributor)
+class ContributorAdmin(admin.ModelAdmin):
+    list_display = ('user', 'note_contribution_count', 'average_star_rating', 'updated_at')
+    search_fields = ('user__username', 'user__email')
+    readonly_fields = ('user', 'note_contribution_count', 'average_star_rating', 'updated_at')
+
+    def has_add_permission(self, request):
+        return False

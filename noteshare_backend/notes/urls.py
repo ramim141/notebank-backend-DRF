@@ -1,11 +1,13 @@
 # notes/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import NoteViewSet, StarRatingViewSet, CommentViewSet, DepartmentViewSet, CourseViewSet, NoteCategoryViewSet, NoteRequestListCreateView 
+from .views import NoteViewSet, StarRatingViewSet, CommentViewSet, DepartmentViewSet, CourseViewSet, NoteCategoryViewSet, NoteRequestListCreateView, FacultyViewSet, ContributorViewSet  
 
 
 router = DefaultRouter()
-# router.register(r'note-requests', NoteRequestListCreateView, basename='note-request') 
+
+router.register(r'contributors', ContributorViewSet, basename='contributor')
+router.register(r'faculties', FacultyViewSet, basename='faculty')
 router.register(r'categories', NoteCategoryViewSet, basename='note-category')
 router.register(r'departments', DepartmentViewSet, basename='department')
 router.register(r'courses', CourseViewSet, basename='course') 

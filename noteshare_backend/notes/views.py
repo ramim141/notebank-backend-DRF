@@ -8,23 +8,25 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest
-from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer
+from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
+from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
 from .permissions import IsOwnerOrReadOnly, IsRatingOrCommentOwnerOrReadOnly
 
 from django.db.models import Avg, Count, Case, When, BooleanField, F, Value 
 from django.db.models.functions import Coalesce
 from rest_framework.exceptions import PermissionDenied
 import logging
-
+from .filters import ContributorFilter
 logger = logging.getLogger(__name__)
 
 
+class FacultyViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Faculty.objects.all().order_by('name')
+    serializer_class = FacultySerializer
+    permission_classes = [permissions.AllowAny]
+
 
 class NoteCategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Provides a read-only API endpoint for Note Categories.
-    """
     queryset = NoteCategory.objects.all().order_by('name')
     serializer_class = NoteCategorySerializer
     permission_classes = [permissions.AllowAny]
@@ -51,7 +53,8 @@ class NoteViewSet(viewsets.ModelViewSet):
         'description',
         'category__name',
         'course__name',
-        'department__name'
+        'department__name',
+        'faculty__name',
     ]
     ordering_fields = ['created_at', 'download_count', 'average_rating', 'title']
 
@@ -243,10 +246,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         queryset = Note.objects.filter(uploader=user).order_by('-created_at').select_related('uploader', 'department', 'course').prefetch_related(
             'star_ratings', 'comments', 'likes', 'bookmarks'
         )
-        # my_uploaded_notes অ্যাকশনের জন্য annotate ব্লকটিও user.is_authenticated চেক করবে
-        # কারণ এই অ্যাকশন শুধুমাত্র প্রমাণীকৃত ব্যবহারকারীদের জন্য
-        # এবং is_liked/bookmarked_by_current_user ফিল্ডগুলো এখানেও দরকার হতে পারে।
-        # এখানে `user` সবসময় AuthenticatedUser হবে, তাই সরাসরি ব্যবহার করা ঠিক।
+
         queryset = queryset.annotate(
             calculated_average_rating=Coalesce(Avg('star_ratings__stars'), Value(0.0)),
             calculated_likes_count=Count('likes', distinct=True),
@@ -396,24 +396,31 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class NoteRequestListCreateView(generics.ListCreateAPIView):
-    """
-    এই ভিউটি লগইন করা ব্যবহারকারীদের জন্য দুটি কাজ করে:
-    1. GET: তাদের নিজেদের করা সব নোট রিকোয়েস্টের তালিকা দেখায়।
-    2. POST: একটি নতুন নোট রিকোয়েস্ট তৈরি করে।
-    """
     serializer_class = NoteRequestSerializer
     permission_classes = [permissions.IsAuthenticated] # শুধুমাত্র লগইন করা ব্যবহারকারীরাই অ্যাক্সেস পাবে
 
     def get_queryset(self):
-        """
-        এই মেথডটি নিশ্চিত করে যে ব্যবহারকারী শুধুমাত্র তার নিজের করা অনুরোধগুলোই দেখতে পাবে।
-        """
         return NoteRequest.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        """
-        এই মেথডটি একটি নতুন অনুরোধ তৈরি করার সময় স্বয়ংক্রিয়ভাবে 'user' ফিল্ডটি সেট করে দেয়।
-        """
-        # ব্যবহারকারীর নাম এবং স্টুডেন্ট আইডি pre-fill করার জন্য Frontend কে সাহায্য করতে পারে
-        # তবে মূল সেভিং হয় request.user দিয়ে
         serializer.save(user=self.request.user)
+
+
+
+class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Provides a read-only list of contributor profiles.
+    The data comes from the pre-calculated Contributor model.
+    """
+    serializer_class = ContributorSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    # <<<< এখানে পরিবর্তন >>>>
+    # select_related থেকে 'user__department' বাদ দেওয়া হয়েছে
+    queryset = Contributor.objects.select_related(
+        'user' 
+    ).order_by('-note_contribution_count', '-average_star_rating')
+    
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = ContributorFilter # এটি অপরিবর্তিত থাকবে
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']

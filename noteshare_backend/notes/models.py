@@ -9,6 +9,30 @@ def note_file_path(instance, filename):
     return f'notes/user_{instance.uploader.id}/{filename}' 
 
 
+class Contributor(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='contribution_profile'
+    )
+    note_contribution_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of approved notes contributed by the user."
+    )
+    average_star_rating = models.FloatField(
+        default=0.0,
+        help_text="Average rating of all approved notes from the user."
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Contribution profile for {self.user.username}"
+    
+    class Meta:
+        ordering = ['-note_contribution_count', '-average_star_rating']
+        verbose_name = "Contributor Profile"
+        verbose_name_plural = "Contributor Profiles"
+
 class Department(models.Model):
     name = models.CharField(max_length=100, unique=True)
     
@@ -43,7 +67,16 @@ class NoteCategory(models.Model):
     def __str__(self):
         return self.name
 
+class Faculty(models.Model):
+    name = models.CharField(max_length=255, unique=True, help_text="Full name of the faculty member.")
 
+    class Meta:
+        verbose_name = "Faculty"
+        verbose_name_plural = "Faculties"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 class Note(models.Model):
     uploader = models.ForeignKey(
@@ -64,8 +97,8 @@ class Note(models.Model):
     category = models.ForeignKey(NoteCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
     course = models.ForeignKey(Course, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes')
-    
-    semester = models.CharField(max_length=50, blank=True, null=True) 
+    faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True, related_name='notes', help_text="Select the faculty who taught the course.")
+    semester = models.CharField(max_length=50, blank=True, null=True)
     tags = TaggableManager(blank=True)
     download_count = models.PositiveIntegerField(default=0)
 
