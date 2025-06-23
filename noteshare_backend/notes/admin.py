@@ -1,7 +1,7 @@
 # notes/admin.py
 from django.contrib import admin
 
-from .models import Note, StarRating, Comment, Department, Course, NoteCategory
+from .models import Note, StarRating, Comment, Department, Course, NoteCategory,NoteRequest
 
 
 @admin.register(Department)
@@ -98,3 +98,20 @@ class CommentAdmin(admin.ModelAdmin):
             return (obj.text[:50] + '...') if len(obj.text) > 50 else obj.text
         return "-"
     comment_summary.short_description = 'Comment'
+
+
+
+@admin.register(NoteRequest)
+class NoteRequestAdmin(admin.ModelAdmin):
+    list_display = ('course_name', 'user', 'department_name', 'status', 'created_at')
+    list_filter = ('status', 'department_name', 'created_at')
+    list_editable = ('status',) # লিস্ট থেকেই স্ট্যাটাস পরিবর্তন করার সুবিধা
+    search_fields = ('course_name', 'department_name', 'user__username', 'user__student_id')
+    readonly_fields = ('user', 'course_name', 'department_name', 'message', 'created_at', 'updated_at')
+    
+    def get_readonly_fields(self, request, obj=None):
+        # যদি নতুন অবজেক্ট তৈরি করা হয়, তাহলে কোনো ফিল্ড রিড-অনলি থাকবে না
+        if obj is None:
+            return ()
+        # যদি বিদ্যমান অবজেক্ট এডিট করা হয়, তাহলে কিছু ফিল্ড রিড-অনলি থাকবে
+        return self.readonly_fields

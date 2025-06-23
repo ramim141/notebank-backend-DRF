@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView # লগইনের জন্য
+from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework.decorators import action
 
 from .serializers import UserRegistrationSerializer, UserSerializer, ChangePasswordSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
@@ -18,9 +18,13 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.db import IntegrityError
 from notes.serializers import NoteSerializer
-from notes.models import Note 
+from notes.models import Note, Course, Department
 from rest_framework import viewsets, permissions
-
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from django.db.models import Case, When, Value, BooleanField
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import NoteFilter 
 User = get_user_model()
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -274,34 +278,150 @@ class PasswordResetConfirmView(generics.GenericAPIView):
 
 
 class UserLinkedNotesViewSet(viewsets.ReadOnlyModelViewSet): 
-  
+    """
+    এই ViewSet ব্যবহারকারীর সাথে সম্পর্কিত নোটগুলো (যেমন: বুকমার্ক, লাইক) দেখায় এবং ফিল্টার করে।
+    """
     serializer_class = NoteSerializer 
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Note.objects.none() 
+        """
+        একটি বেস ক্যোয়ারিসেট প্রদান করে, যা সব অ্যাকশনে ব্যবহার হবে।
+        """
+        # শুধুমাত্র অনুমোদিত নোটগুলোই দেখানো হবে
+        return Note.objects.filter(is_approved=True).select_related(
+            'uploader', 'department', 'course', 'category'
+        ).prefetch_related('tags')
+
+    def get_annotated_queryset(self, base_queryset):
+        """
+        is_liked এবং is_bookmarked ফিল্ড যোগ করার জন্য একটি হেল্পার মেথড।
+        এটি কোড পুনরাবৃত্তি কমায়।
+        """
+        user = self.request.user
+        return base_queryset.annotate(
+            is_liked_by_current_user_annotated=Case(
+                When(likes__user=user, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            ),
+            is_bookmarked_by_current_user_annotated=Case(
+                When(bookmarks__user=user, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            )
+        )
 
     @action(detail=False, methods=['get'], url_path='bookmarked-notes')
     def bookmarked_notes(self, request):
+        """
+        ব্যবহারকারীর সব বুকমার্ক করা নোট দেখায় এবং ক্যাটাগরি অনুযায়ী ফিল্টার করে।
+        """
         user = request.user
-        notes = Note.objects.filter(bookmarks__user=user).distinct().order_by('-bookmarks__created_at')
-        page = self.paginate_queryset(notes)
+        
+        # ✅ শুধুমাত্র ব্যবহারকারীর বুকমার্ক করা নোট আনা হচ্ছে
+        base_queryset = self.get_queryset().filter(bookmarks__user=user)
+        
+        # ✅ ফিল্টার ক্লাস ব্যবহার করে ক্যোয়ারিসেট ফিল্টার করা হচ্ছে
+        filtered_queryset = NoteFilter(request.query_params, queryset=base_queryset, request=request).qs
+        
+        # Annotation যোগ করা হচ্ছে
+        annotated_queryset = self.get_annotated_queryset(filtered_queryset)
+        
+        # ফলাফলকে বুকমার্ক করার সময় অনুযায়ী সাজানো হচ্ছে
+        final_queryset = annotated_queryset.order_by('-bookmarks__created_at')
+
+        # পেজিনেশন
+        page = self.paginate_queryset(final_queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True) 
             return self.get_paginated_response(serializer.data)
 
-        serializer = self.get_serializer(notes, many=True)
+        serializer = self.get_serializer(final_queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], url_path='liked-notes')
     def liked_notes(self, request):
+        """
+        ব্যবহারকারীর সব লাইক করা নোট দেখায়।
+        """
         user = request.user
-        notes = Note.objects.filter(likes__user=user).distinct().order_by('-likes__created_at')
-
-        page = self.paginate_queryset(notes)
+        base_queryset = self.get_queryset().filter(likes__user=user)
+        annotated_queryset = self.get_annotated_queryset(base_queryset)
+        final_queryset = annotated_queryset.order_by('-likes__created_at')
+        
+        page = self.paginate_queryset(final_queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
             
-        serializer = self.get_serializer(notes, many=True)
+        serializer = self.get_serializer(final_queryset, many=True)
         return Response(serializer.data)
+
+class SiteStatsView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, *args, **kwargs):
+        total_users = User.objects.count()
+        total_notes = Note.objects.filter(is_approved=True).count() 
+        total_courses = Course.objects.count()
+        total_departments = Department.objects.count()
+
+
+        stats_data = {
+            "total_users": total_users,
+            "total_notes": total_notes,
+            "total_courses": total_courses,
+            "total_departments": total_departments,
+        }
+        return Response(stats_data)
+
+
+class BookmarkedNotesView(generics.ListAPIView):
+    """
+    এই ভিউটি লগইন করা ব্যবহারকারীর সব বুকমার্ক করা নোট দেখায় 
+    এবং ক্যাটাগরি অনুযায়ী ফিল্টার করার সুবিধা দেয়।
+    """
+    serializer_class = NoteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    # ✅ ফিল্টারিং ব্যাকএন্ড এবং ফিল্টার করার জন্য ফিল্ডগুলো যোগ করা হচ্ছে
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {
+        # 'category__name' দিয়ে ফিল্টার করার অনুমতি দেওয়া হলো
+        'category__name': ['exact'],
+    }
+
+    def get_queryset(self):
+        """
+        এই মেথডটি শুধুমাত্র লগইন করা ব্যবহারকারীর বুকমার্ক করা নোটগুলো ফেরত দেয়
+        এবং সেগুলোকে ক্যাটাগরি দিয়ে ফিল্টার করে।
+        """
+        user = self.request.user
+        
+        # ✅ مباشرة Note মডেলে ফিল্টার করা হচ্ছে, যা বেশি কার্যকর
+        queryset = Note.objects.filter(
+            bookmarks__user=user, 
+            is_approved=True
+        ).select_related(
+            'uploader', 'department', 'course', 'category'
+        ).prefetch_related(
+            'tags', 'likes', 'bookmarks', 'star_ratings'
+        )
+
+        # ✅ Annotation গুলো যোগ করা হচ্ছে যাতে is_liked, is_bookmarked ইত্যাদি ফিল্ড কাজ করে
+        # আপনার NoteViewSet থেকে এই অংশটি কপি করা হয়েছে
+        queryset = queryset.annotate(
+            is_liked_by_current_user_annotated=Case(
+                When(likes__user=user, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            ),
+            is_bookmarked_by_current_user_annotated=Case(
+                When(bookmarks__user=user, then=Value(True)),
+                default=Value(False),
+                output_field=BooleanField()
+            )
+        )
+        
+        # ✅ বুকমার্ক করার সময় অনুযায়ী সাজানো হলো, যাতে নতুন বুকমার্কগুলো আগে দেখা যায়
+        return queryset.order_by('-bookmarks__created_at')

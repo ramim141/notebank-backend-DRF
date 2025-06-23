@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory
+from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory, NoteRequest
 from taggit.serializers import (TagListSerializerField, TaggitSerializer)
 
 
@@ -273,3 +273,30 @@ class BookmarkSerializer(serializers.ModelSerializer):
 #             'action_object',
 #         )
 #         read_only_fields = fields
+
+
+class NoteRequestSerializer(serializers.ModelSerializer):
+    """
+    NoteRequest মডেলের জন্য সিরিয়ালাইজার।
+    """
+    # ব্যবহারকারীর নাম দেখানোর জন্য একটি রিড-অনলি ফিল্ড
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    user_full_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    user_student_id = serializers.CharField(source='user.student_id', read_only=True)
+
+    class Meta:
+        model = NoteRequest
+        fields = [
+            'id', 
+            'user',              # ID হিসেবে থাকবে
+            'user_username',     # শুধু দেখানোর জন্য
+            'user_full_name',    # Frontend-এ নাম দেখানোর জন্য
+            'user_student_id',   # Frontend-এ স্টুডেন্ট আইডি দেখানোর জন্য
+            'course_name', 
+            'department_name', 
+            'message', 
+            'status', 
+            'created_at'
+        ]
+    
+        read_only_fields = ['user', 'status', 'created_at']

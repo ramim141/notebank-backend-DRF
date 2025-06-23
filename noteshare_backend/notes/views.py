@@ -1,16 +1,16 @@
 # notes/views.py
 
-from rest_framework import viewsets, permissions, status, serializers
+from rest_framework import viewsets, permissions, status, serializers, generics
+import rest_framework
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
-from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory
-from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer
+from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest
+from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer
 from .permissions import IsOwnerOrReadOnly, IsRatingOrCommentOwnerOrReadOnly
-
 
 from django.db.models import Avg, Count, Case, When, BooleanField, F, Value 
 from django.db.models.functions import Coalesce
@@ -392,3 +392,28 @@ class CommentViewSet(viewsets.ModelViewSet):
 #     def unread_count(self, request):
 #         count = self.request.user.notifications.unread().count()
 #         return Response({"unread_count": count}, status=status.HTTP_200_OK)
+
+
+
+class NoteRequestListCreateView(generics.ListCreateAPIView):
+    """
+    এই ভিউটি লগইন করা ব্যবহারকারীদের জন্য দুটি কাজ করে:
+    1. GET: তাদের নিজেদের করা সব নোট রিকোয়েস্টের তালিকা দেখায়।
+    2. POST: একটি নতুন নোট রিকোয়েস্ট তৈরি করে।
+    """
+    serializer_class = NoteRequestSerializer
+    permission_classes = [permissions.IsAuthenticated] # শুধুমাত্র লগইন করা ব্যবহারকারীরাই অ্যাক্সেস পাবে
+
+    def get_queryset(self):
+        """
+        এই মেথডটি নিশ্চিত করে যে ব্যবহারকারী শুধুমাত্র তার নিজের করা অনুরোধগুলোই দেখতে পাবে।
+        """
+        return NoteRequest.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        """
+        এই মেথডটি একটি নতুন অনুরোধ তৈরি করার সময় স্বয়ংক্রিয়ভাবে 'user' ফিল্ডটি সেট করে দেয়।
+        """
+        # ব্যবহারকারীর নাম এবং স্টুডেন্ট আইডি pre-fill করার জন্য Frontend কে সাহায্য করতে পারে
+        # তবে মূল সেভিং হয় request.user দিয়ে
+        serializer.save(user=self.request.user)

@@ -174,3 +174,43 @@ class Bookmark(models.Model):
 
     def __str__(self):
         return f"{self.user.username} bookmarked {self.note.title}"
+
+
+
+class NoteRequest(models.Model):
+    
+    class RequestStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+        FULFILLED = 'FULFILLED', 'Fulfilled'
+        REJECTED = 'REJECTED', 'Rejected'
+
+    # কোন ব্যবহারকারী অনুরোধ করেছেন, তার জন্য ForeignKey
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='note_requests'
+    )
+    # ফর্ম থেকে পাওয়া ডেটা
+    course_name = models.CharField(max_length=255)
+    department_name = models.CharField(max_length=255)
+    message = models.TextField(help_text="Detailed description of the needed note.")
+
+    # অনুরোধের বর্তমান অবস্থা ট্র্যাক করার জন্য
+    status = models.CharField(
+        max_length=20,
+        choices=RequestStatus.choices,
+        default=RequestStatus.PENDING
+    )
+    
+    # কখন অনুরোধ করা হয়েছে
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Request for '{self.course_name}' by {self.user.username} ({self.status})"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Note Request"
+        verbose_name_plural = "Note Requests"
