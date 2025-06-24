@@ -414,13 +414,11 @@ class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = ContributorSerializer
     permission_classes = [permissions.AllowAny]
-    
-    # <<<< এখানে পরিবর্তন >>>>
-    # select_related থেকে 'user__department' বাদ দেওয়া হয়েছে
+
     queryset = Contributor.objects.select_related(
         'user' 
     ).order_by('-note_contribution_count', '-average_star_rating')
     
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_class = ContributorFilter # এটি অপরিবর্তিত থাকবে
+    filterset_class = ContributorFilter 
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']

@@ -69,7 +69,8 @@ class NoteCategory(models.Model):
 
 class Faculty(models.Model):
     name = models.CharField(max_length=255, unique=True, help_text="Full name of the faculty member.")
-
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='faculties', help_text="Department to which the faculty belongs.", null=True, blank=True)
+    email = models.EmailField(max_length=255, blank=True, null=True, help_text="Email address of the faculty member.")
     class Meta:
         verbose_name = "Faculty"
         verbose_name_plural = "Faculties"

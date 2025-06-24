@@ -34,7 +34,7 @@ class ContributorSerializer(serializers.ModelSerializer):
 class FacultySerializer(serializers.ModelSerializer):
     class Meta:
         model = Faculty
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'department', 'email']
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:

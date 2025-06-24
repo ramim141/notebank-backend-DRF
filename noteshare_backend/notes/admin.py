@@ -5,7 +5,8 @@ from .models import Note, StarRating, Comment, Department, Course, NoteCategory,
 
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'id')
+    list_display = ('name', 'department', 'email',  'id')
+
     search_fields = ('name',)
 
 @admin.register(Department)
