@@ -14,7 +14,7 @@ class ContributorSerializer(serializers.ModelSerializer):
     batch = serializers.CharField(source='user.batch', read_only=True)
     section = serializers.CharField(source='user.section', read_only=True)
     
-    department_name = serializers.CharField(source='user.department.name', read_only=True, allow_null=True)
+    department_name = serializers.CharField(source='user.department', read_only=True, allow_null=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     
     class Meta:

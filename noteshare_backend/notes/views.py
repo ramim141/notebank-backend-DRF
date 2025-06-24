@@ -420,5 +420,5 @@ class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
     ).order_by('-note_contribution_count', '-average_star_rating')
     
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_class = ContributorFilter 
+    filterset_fields = ['user__department']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']
