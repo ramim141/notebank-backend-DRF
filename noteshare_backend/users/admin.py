@@ -11,6 +11,8 @@ class UserAdmin(BaseUserAdmin):
         'email', 
         'student_id', 
         'department', 
+        'batch',
+        'section',
         'first_name', 
         'last_name', 
         'bio',
@@ -31,12 +33,14 @@ class UserAdmin(BaseUserAdmin):
     
 
     list_display_links = ('username', 'email', 'student_id') 
-    list_filter = BaseUserAdmin.list_filter + ('is_email_verified', 'is_active', 'is_staff', 'department',  'gender', 'university', 'skills',) 
+    list_filter = BaseUserAdmin.list_filter + ('is_email_verified', 'is_active', 'is_staff', 'department', 'batch', 'section', 'gender', 'university', 'skills',) 
     search_fields = BaseUserAdmin.search_fields + ('email', 'student_id', 'department', 'mobile_number', 'university','skills__name',)
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Additional Info', {'fields': (
             'student_id',
             'department',
+            'batch',
+            'section',
             'university',
             'bio',
             'mobile_number',

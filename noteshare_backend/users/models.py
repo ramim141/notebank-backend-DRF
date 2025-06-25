@@ -38,15 +38,15 @@ class User(AbstractUser):
         blank=False,  
 
     )
-    # department = models.ForeignKey(
-    #     Department, 
-    #     on_delete=models.SET_NULL, 
-    #     null=True, 
-    #     blank=True,
-    #     related_name='users',
-    #     help_text="User's primary department"
-    # )
-    department = models.CharField(max_length=100, blank=True, null=True, help_text="User's primary department")
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users',
+        help_text="User's primary department"
+    )
+    # department = models.CharField(max_length=100, blank=True, null=True, help_text="User's primary department")
     batch = models.CharField(max_length=20, blank=True, null=True)
     section = models.CharField(max_length=10, blank=True, null=True)
     bio = models.TextField(max_length=500, blank=True, null=True, help_text="A short biography about the user.")

@@ -416,9 +416,10 @@ class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     queryset = Contributor.objects.select_related(
-        'user' 
+        'user', 'user__department'
     ).order_by('-note_contribution_count', '-average_star_rating')
     
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['user__department']
+    # filterset_fields = ['user__department']
+    filterset_class = ContributorFilter
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']

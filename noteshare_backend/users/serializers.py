@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from taggit.managers import TaggableManager
 import logging
-
+from notes.models import Department
 logger = logging.getLogger(__name__)
 
 User = get_user_model() 
@@ -32,17 +32,25 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True, label="Confirm password")
     student_id = serializers.CharField(required=True) 
-    department = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-
+    # department = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(), 
+        required=False, # ডিপার্টমেন্ট সিলেক্ট করা বাধ্যতামূলক নয়
+        allow_null=True
+    )
+    batch = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    section = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password2', 'first_name', 'last_name', 'student_id', 'department')
+        fields = ('username', 'email', 'password', 'password2', 'first_name', 'last_name', 'student_id', 'department', 'batch', 'section')
         extra_kwargs = {
             'first_name': {'required': False},
             'last_name': {'required': False},
             'email': {'required': True}, 
             'student_id': {'required': True}, 
             'department': {'required': False}, 
+            'batch': {'required': False},
+            'section': {'required': False},
             
         }
 
@@ -68,6 +76,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     skills = CustomTaggitSerializerField(required=False)
+    batch_with_section = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = (
@@ -75,11 +84,12 @@ class UserSerializer(serializers.ModelSerializer):
             'is_email_verified',
             'student_id',
             'department',
+            'batch_with_section',
             'profile_picture',
             'profile_picture_url',
             'bio', 'mobile_number', 'university', 'website', 'birthday', 'gender', 'skills'
         )
-        read_only_fields = ('username', 'id', 'is_email_verified', 'profile_picture_url', 'student_id',)
+        read_only_fields = ('username', 'id', 'is_email_verified', 'profile_picture_url', 'student_id', 'batch_with_section')
         extra_kwargs = {
             'profile_picture': {'write_only': True, 'required': False},
             'department': {'required': False},
@@ -91,7 +101,12 @@ class UserSerializer(serializers.ModelSerializer):
             'gender': {'required': False, 'allow_null': True},
         }
             
-        
+    def get_batch_with_section(self, obj):
+        if obj.batch and obj.section:
+            return f"{obj.batch}({obj.section})"
+        elif obj.batch:
+            return obj.batch
+        return 'N/A'
     def get_profile_picture_url(self, obj):
         request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):

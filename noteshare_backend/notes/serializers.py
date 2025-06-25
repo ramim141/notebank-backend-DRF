@@ -11,24 +11,33 @@ User = get_user_model()
 
 class ContributorSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    batch = serializers.CharField(source='user.batch', read_only=True)
-    section = serializers.CharField(source='user.section', read_only=True)
+    # batch = serializers.CharField(source='user.batch', read_only=True)
+    # section = serializers.CharField(source='user.section', read_only=True)
+    batch_with_section = serializers.SerializerMethodField()
     
-    department_name = serializers.CharField(source='user.department', read_only=True, allow_null=True)
+    department_name = serializers.CharField(source='user.department.name', read_only=True, allow_null=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     
     class Meta:
         model = Contributor
         fields = [
             'full_name',
-            'batch',
-            'section',
+            # 'batch',
+            # 'section',
+            'batch_with_section',
             'department_name',
             'email',
             'note_contribution_count',
             'average_star_rating',
             'updated_at',
         ]
+    def get_batch_with_section(self, obj):
+        user = obj.user
+        if user.batch and user.section:
+            return f"{user.batch}({user.section})"
+        elif user.batch:
+            return user.batch
+        return 'N/A'
 
 
 class FacultySerializer(serializers.ModelSerializer):

@@ -123,9 +123,17 @@ class NoteRequestAdmin(admin.ModelAdmin):
 
 @admin.register(Contributor)
 class ContributorAdmin(admin.ModelAdmin):
-    list_display = ('user', 'note_contribution_count', 'average_star_rating', 'updated_at')
-    search_fields = ('user__username', 'user__email')
+    list_display = ('user', 'batch_with_section', 'note_contribution_count', 'average_star_rating', 'updated_at')
+    search_fields = ('user__username', 'user__email', 'user__batch', 'user__section')
     readonly_fields = ('user', 'note_contribution_count', 'average_star_rating', 'updated_at')
 
+    @admin.display(description='Batch & Section')
+    def batch_with_section(self, obj):
+        user = obj.user
+        if user.batch and user.section:
+            return f"{user.batch}({user.section})"
+        elif user.batch:
+            return user.batch
+        return "N/A"
     def has_add_permission(self, request):
         return False
