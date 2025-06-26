@@ -25,6 +25,7 @@ from rest_framework.permissions import AllowAny
 from django.db.models import Case, When, Value, BooleanField
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import NoteFilter 
+from .serializers import UserSerializer
 User = get_user_model()
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -111,7 +112,16 @@ class UserRegistrationView(generics.CreateAPIView):
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    pass
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200:
+            # সফলভাবে টোকেন পাওয়ার পর, ব্যবহারকারীর তথ্য যোগ করুন
+            user = self.user
+            user_data = UserSerializer(user, context={'request': request}).data
+            response.data['user'] = user_data
+        
+        return response
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
