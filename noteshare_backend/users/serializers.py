@@ -80,52 +80,38 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return value
 
 class UserSerializer(serializers.ModelSerializer):
-    profile_picture_url = serializers.SerializerMethodField()
+    profile_picture_url = serializers.SerializerMethodField(read_only=True)
     skills = CustomTaggitSerializerField(required=False)
-    batch_with_section = serializers.SerializerMethodField()
     department_name = serializers.CharField(source='department.name', read_only=True, allow_null=True)
+
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
-            'is_email_verified',
-            'student_id',
-            'department',
-            'department_name',
-            'batch_with_section',
-            'profile_picture',
-            'profile_picture_url',
-            'bio', 'mobile_number', 'university', 'website', 'birthday', 'gender', 'skills'
+            'is_email_verified', 'student_id', 'department', 'department_name',
+            'batch', 'section',
+            'profile_picture_url', 
+            'bio', 'mobile_number', 'university', 'website', 
+            'birthday', 'gender', 'skills'
         )
         read_only_fields = (
-            'username',
-            'id',
-            'is_email_verified', 
-            'profile_picture_url', 
-            'student_id', 
-            'batch_with_section', 
-            'department_name'
-            
-            )
+            'username', 'id', 'is_email_verified', 'student_id', 'profile_picture_url', 'department_name'
+        )
         extra_kwargs = {
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+            'department': {'required': False, 'allow_null': True, 'write_only': True},
+            'batch': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'section': {'required': False, 'allow_blank': True, 'allow_null': True},
             'profile_picture': {'write_only': True, 'required': False},
-            'department': {'required': False},
             'bio': {'required': False, 'allow_blank': True, 'allow_null': True},
             'mobile_number': {'required': False, 'allow_blank': True, 'allow_null': True},
             'university': {'required': False, 'allow_blank': True, 'allow_null': True},
             'website': {'required': False, 'allow_blank': True, 'allow_null': True},
             'birthday': {'required': False, 'allow_null': True},
             'gender': {'required': False, 'allow_null': True},
-            'batch': {'required': False},
-            'section': {'required': False},
         }
             
-    def get_batch_with_section(self, obj):
-        if obj.batch and obj.section:
-            return f"{obj.batch}({obj.section})"
-        elif obj.batch:
-            return obj.batch
-        return 'N/A'
     def get_profile_picture_url(self, obj):
         request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
@@ -134,36 +120,31 @@ class UserSerializer(serializers.ModelSerializer):
             return obj.profile_picture.url
         return None
     
-    # users/serializers.py (UserSerializer এর update মেথড)
-
     def update(self, instance, validated_data):
-        logger.info(f"UserSerializer.update called for user: {instance.username}")
-        logger.info(f"Validated data received: {validated_data}")
+        # Department আপডেট
+        department = validated_data.pop('department', None)
+        if department is not None:
+            instance.department = department
 
-        # ✅ ডিপার্টমেন্ট হ্যান্ডেল করার জন্য সঠিক লজিক
-        department_data = validated_data.pop('department', None)
-        if department_data:
-            # department_data এখন একটি ডিপার্টমেন্ট অবজেক্ট হতে পারে, যা ID নয়
-            # তাই আমরা pk ব্যবহার করব
-            instance.department = department_data
-        
+        # Profile picture আপডেট
         profile_picture = validated_data.pop('profile_picture', None)
         if profile_picture is not None:
-            instance.profile_picture = profile_picture
-
+            if profile_picture == '':
+                instance.profile_picture.delete()
+            else:
+                instance.profile_picture = profile_picture
+        
+        # Skills আপডেট
         skills_data = validated_data.pop('skills', None)
         if skills_data is not None:
             instance.skills.set(skills_data)
-
-        # বাকি সব ফিল্ড আপডেট করা
+        
+        # বাকি সব ফিল্ড আপডেট
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-            logger.info(f"Setting attribute {attr} to {value}")
 
         instance.save()
-        logger.info("User instance saved.")
         return instance
-
 class ChangePasswordSerializer(serializers.Serializer):
 
     old_password = serializers.CharField(required=True, write_only=True)
