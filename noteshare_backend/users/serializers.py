@@ -32,17 +32,23 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, required=True, label="Confirm password")
     student_id = serializers.CharField(required=True) 
-    # department = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    department = serializers.PrimaryKeyRelatedField(
-        queryset=Department.objects.all(), 
-        required=False, # ডিপার্টমেন্ট সিলেক্ট করা বাধ্যতামূলক নয়
-        allow_null=True
-    )
+    department_name = serializers.CharField(source='department.name', read_only=True, allow_null=True)
     batch = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     section = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password2', 'first_name', 'last_name', 'student_id', 'department', 'batch', 'section')
+        fields = (
+            'username', 
+            'email', 
+            'password', 
+            'password2', 
+            'first_name', 
+            'last_name', 
+            'student_id', 
+            'department', 
+            'batch', 
+            'section'
+            )
         extra_kwargs = {
             'first_name': {'required': False},
             'last_name': {'required': False},
@@ -84,15 +90,25 @@ class UserSerializer(serializers.ModelSerializer):
             'is_email_verified',
             'student_id',
             'department',
+            'department_name',
             'batch_with_section',
             'profile_picture',
             'profile_picture_url',
             'bio', 'mobile_number', 'university', 'website', 'birthday', 'gender', 'skills'
         )
-        read_only_fields = ('username', 'id', 'is_email_verified', 'profile_picture_url', 'student_id', 'batch_with_section')
+        read_only_fields = (
+            'username',
+            'id',
+            'is_email_verified', 
+            'profile_picture_url', 
+            'student_id', 
+            'batch_with_section', 
+            'department_name'
+            
+            )
         extra_kwargs = {
             'profile_picture': {'write_only': True, 'required': False},
-            'department': {'required': False},
+            # 'department': {'required': False},
             'bio': {'required': False, 'allow_blank': True, 'allow_null': True},
             'mobile_number': {'required': False, 'allow_blank': True, 'allow_null': True},
             'university': {'required': False, 'allow_blank': True, 'allow_null': True},
