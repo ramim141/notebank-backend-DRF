@@ -83,6 +83,7 @@ class UserSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     skills = CustomTaggitSerializerField(required=False)
     batch_with_section = serializers.SerializerMethodField()
+    department_name = serializers.CharField(source='department.name', read_only=True, allow_null=True)
     class Meta:
         model = User
         fields = (
@@ -108,13 +109,15 @@ class UserSerializer(serializers.ModelSerializer):
             )
         extra_kwargs = {
             'profile_picture': {'write_only': True, 'required': False},
-            # 'department': {'required': False},
+            'department': {'required': False},
             'bio': {'required': False, 'allow_blank': True, 'allow_null': True},
             'mobile_number': {'required': False, 'allow_blank': True, 'allow_null': True},
             'university': {'required': False, 'allow_blank': True, 'allow_null': True},
             'website': {'required': False, 'allow_blank': True, 'allow_null': True},
             'birthday': {'required': False, 'allow_null': True},
             'gender': {'required': False, 'allow_null': True},
+            'batch': {'required': False},
+            'section': {'required': False},
         }
             
     def get_batch_with_section(self, obj):
@@ -132,36 +135,28 @@ class UserSerializer(serializers.ModelSerializer):
         return None
     
     def update(self, instance, validated_data):
-        logger.info(f"UserSerializer.update called for user: {instance.username}")
-        logger.info(f"Validated data received: {validated_data}")
-
         profile_picture = validated_data.pop('profile_picture', None)
-        if profile_picture:
+        if profile_picture is not None:
             instance.profile_picture = profile_picture
-            logger.info(f"Profile picture found and popped: {profile_picture}")
 
         skills_data = validated_data.pop('skills', None)
-        logger.info(f"Skills data popped: {skills_data}, type: {type(skills_data)}")
-
+        
+        # ✅ Department আপডেট করার জন্য এই কোডটি যোগ করা হয়েছে
+        department_id = validated_data.pop('department', None)
+        if department_id:
+            try:
+                department = Department.objects.get(pk=department_id)
+                instance.department = department
+            except Department.DoesNotExist:
+                raise serializers.ValidationError({"department": "Invalid department ID provided."})
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-            logger.info(f"Setting attribute {attr} to {value}")
 
         if skills_data is not None:
-            if isinstance(skills_data, list):
-                logger.info(f"Attempting to set skills: {skills_data}")
-                try:
-                    instance.skills.set(skills_data)
-                    logger.info("Skills set successfully via instance.skills.set().")
-                except Exception as e:
-                    logger.error(f"Error setting skills: {e}")
-            else:
-                logger.warning(f"Skills data is not a list: {skills_data}. Skipping setting skills.")
-        else:
-            logger.info("No skills data provided for update.")
+            instance.skills.set(skills_data)
 
         instance.save()
-        logger.info("User instance saved.")
         return instance
 
 class ChangePasswordSerializer(serializers.Serializer):
