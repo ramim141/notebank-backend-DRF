@@ -134,29 +134,34 @@ class UserSerializer(serializers.ModelSerializer):
             return obj.profile_picture.url
         return None
     
+    # users/serializers.py (UserSerializer এর update মেথড)
+
     def update(self, instance, validated_data):
+        logger.info(f"UserSerializer.update called for user: {instance.username}")
+        logger.info(f"Validated data received: {validated_data}")
+
+        # ✅ ডিপার্টমেন্ট হ্যান্ডেল করার জন্য সঠিক লজিক
+        department_data = validated_data.pop('department', None)
+        if department_data:
+            # department_data এখন একটি ডিপার্টমেন্ট অবজেক্ট হতে পারে, যা ID নয়
+            # তাই আমরা pk ব্যবহার করব
+            instance.department = department_data
+        
         profile_picture = validated_data.pop('profile_picture', None)
         if profile_picture is not None:
             instance.profile_picture = profile_picture
 
         skills_data = validated_data.pop('skills', None)
-        
-        # ✅ Department আপডেট করার জন্য এই কোডটি যোগ করা হয়েছে
-        department_id = validated_data.pop('department', None)
-        if department_id:
-            try:
-                department = Department.objects.get(pk=department_id)
-                instance.department = department
-            except Department.DoesNotExist:
-                raise serializers.ValidationError({"department": "Invalid department ID provided."})
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
         if skills_data is not None:
             instance.skills.set(skills_data)
 
+        # বাকি সব ফিল্ড আপডেট করা
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+            logger.info(f"Setting attribute {attr} to {value}")
+
         instance.save()
+        logger.info("User instance saved.")
         return instance
 
 class ChangePasswordSerializer(serializers.Serializer):
