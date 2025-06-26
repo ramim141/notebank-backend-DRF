@@ -113,11 +113,9 @@ class UserSerializer(serializers.ModelSerializer):
         }
             
     def get_profile_picture_url(self, obj):
-        request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
-            if request:
-                return request.build_absolute_uri(obj.profile_picture.url)
-            return obj.profile_picture.url
+            # ❌ request.build_absolute_uri() ব্যবহার না করে সরাসরি URL রিটার্ন করা হচ্ছে
+            return obj.profile_picture.url  # এটি /media/profile_pics/... এর মতো পাথ রিটার্ন করবে
         return None
     
     def update(self, instance, validated_data):
