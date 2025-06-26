@@ -29,21 +29,10 @@ class CustomTaggitSerializerField(serializers.Field):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        # আপনি চাইলে এখানে টোকেনের মধ্যে অতিরিক্ত ডেটা যোগ করতে পারেন
-        # token['username'] = user.username
-        return token
-
     def validate(self, attrs):
-        # মূল ভ্যালিডেশন মেথডটি কল করে টোকেন এবং অন্যান্য ডেটা পাওয়া
         data = super().validate(attrs)
-        
-        # ব্যবহারকারীর তথ্য সিরিয়ালাইজ করে রেসপন্সে যোগ করা
-        serializer = UserSerializer(self.user, context={'request': self.context.get('request')})
+        serializer = UserSerializer(self.user, context=self.context)
         data['user'] = serializer.data
-        
         return data
 
 
