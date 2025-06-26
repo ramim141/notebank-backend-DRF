@@ -3,6 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from taggit.managers import TaggableManager
 import logging
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from notes.models import Department
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,24 @@ class CustomTaggitSerializerField(serializers.Field):
             raise serializers.ValidationError("All tag items must be strings.")
         return data
 
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # আপনি চাইলে এখানে টোকেনের মধ্যে অতিরিক্ত ডেটা যোগ করতে পারেন
+        # token['username'] = user.username
+        return token
+
+    def validate(self, attrs):
+        # মূল ভ্যালিডেশন মেথডটি কল করে টোকেন এবং অন্যান্য ডেটা পাওয়া
+        data = super().validate(attrs)
+        
+        # ব্যবহারকারীর তথ্য সিরিয়ালাইজ করে রেসপন্সে যোগ করা
+        serializer = UserSerializer(self.user, context={'request': self.context.get('request')})
+        data['user'] = serializer.data
+        
+        return data
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
