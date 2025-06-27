@@ -19,6 +19,7 @@ import logging
 from .filters import ContributorFilter
 logger = logging.getLogger(__name__)
 from django.db import IntegrityError
+from django.http import Http404
 
 class FacultyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Faculty.objects.all().order_by('name')
@@ -57,7 +58,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         'faculty__name',
     ]
     ordering_fields = ['created_at', 'download_count', 'average_rating', 'title']
-
+    
     def get_permissions(self):
 
         if self.action in ['list', 'retrieve']:
