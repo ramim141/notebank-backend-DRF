@@ -1,4 +1,4 @@
-# settings.py (Updated & Corrected for Production on Render)
+# settings.py (Final and Corrected Version)
 
 import os
 from decouple import config 
@@ -6,65 +6,39 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 
+# --- BASE_DIR, SECRET_KEY, DEBUG, ALLOWED_HOSTS (অপরিবর্তিত) ---
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool) # ✅ প্রোডাকশনের জন্য DEBUG=False রাখা ভালো
-
-# ✅ Render-এ আপনার অ্যাপের URL যোগ করুন
-# আপনার Render অ্যাপের URL টি .env ফাইলে 'RENDER_EXTERNAL_HOSTNAME' নামে রাখতে পারেন
-# অথবা সরাসরি এখানে হার্ডকোড করতে পারেন
+DEBUG = config('DEBUG', default=False, cast=bool)
 RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default=None)
-
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# Application definition
+# --- INSTALLED_APPS, MIDDLEWARE (অপরিবর্তিত) ---
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'whitenoise.runserver_nostatic', # ✅ WhiteNoise এর জন্য
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'django_filters',
-    'corsheaders',
-    'taggit',
-    'drf_spectacular',
-    'users',
-    'notes',
-    
-    'rest_framework_simplejwt', 
-    'rest_framework_simplejwt.token_blacklist', 
+    'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
+    'django.contrib.sessions', 'django.contrib.messages', 'whitenoise.runserver_nostatic',
+    'django.contrib.staticfiles', 'rest_framework', 'django_filters', 'corsheaders',
+    'taggit', 'drf_spectacular', 'users', 'notes',
+    'rest_framework_simplejwt', 'rest_framework_simplejwt.token_blacklist', 
 ]
-
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # ✅ WhiteNoise Middleware
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.security.SecurityMiddleware', 'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware', 'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# --- ROOT_URLCONF, TEMPLATES, WSGI_APPLICATION, AUTH_USER_MODEL (অপরিবর্তিত) ---
 ROOT_URLCONF = 'noteshare_backend.urls'
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [], 'APP_DIRS': True,
+        'OPTIONS': { 'context_processors': [
+                'django.template.context_processors.debug', 'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages',
             ],
         },
     },
@@ -72,51 +46,63 @@ TEMPLATES = [
 WSGI_APPLICATION = 'noteshare_backend.wsgi.application'
 AUTH_USER_MODEL = 'users.User'
 
-# Database
+# --- Database (অপরিবর্তিত) ---
 DATABASES = {
     'default': dj_database_url.parse(config('DATABASE_URL'))
 }
 
-# REST Framework, SIMPLE_JWT, AUTH_PASSWORD_VALIDATORS (অপরিবর্তিত)
-# ...
 
-# Internationalization (অপরিবর্তিত)
-# ...
+# ✅✅✅ এই ব্লকটি যুক্ত করুন ✅✅✅
+# --- REST FRAMEWORK and SIMPLE JWT Configuration ---
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+}
+
+
+# --- CORS and CSRF Settings (অপরিবর্তিত) ---
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://edumetro.onrender.com",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
+    "https://edumetro.onrender.com",
 ]
 if RENDER_EXTERNAL_HOSTNAME:
-    CORS_ALLOWED_ORIGINS.append(f"https://your-frontend-app-name.onrender.com") 
-    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}") 
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-CORS_ALLOWED_ORIGINS.append("https://edumetro.onrender.com")
 CORS_ALLOW_HEADERS = [
     'accept', 'accept-encoding', 'authorization', 'content-type', 'dnt',
     'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# ✅ Static and Media files for Production with WhiteNoise
+
+# --- বাকি সব কোড অপরিবর্তিত থাকবে ---
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media' # ✅ Render-এর ফ্রি টায়ারে এটি ephemeral, কিন্তু ছোট অ্যাপের জন্য কাজ করবে
-
+MEDIA_ROOT = BASE_DIR / 'media'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-
-
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
@@ -125,15 +111,8 @@ EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='') 
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='') 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER) 
-
-
-
-
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Note Sharing Platform API',
-    'DESCRIPTION': 'API documentation for the Note Sharing Platform project. '
-                   'This platform allows users to share and manage academic notes.',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False, 
-    'COMPONENT_SPLIT_REQUEST': True, 
+    'DESCRIPTION': 'API documentation for the Note Sharing Platform project.',
+    'VERSION': '1.0.0', 'SERVE_INCLUDE_SCHEMA': False, 'COMPONENT_SPLIT_REQUEST': True, 
 }
