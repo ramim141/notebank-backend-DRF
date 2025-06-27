@@ -84,13 +84,13 @@ DATABASES = {
 # ...
 
 # ✅ CORS Settings আপডেট করা হয়েছে
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",          # Local development
-#     "https://edumetro.onrender.com",  # আপনার প্রোডাকশন ফ্রন্টএন্ড URL
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",          # Local development
+    "https://edumetro.onrender.com",  # আপনার প্রোডাকশন ফ্রন্টএন্ড URL
+]
 if RENDER_EXTERNAL_HOSTNAME:
     CORS_ALLOWED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "https://edumetro.onrender.com",
