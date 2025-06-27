@@ -18,7 +18,7 @@ from rest_framework.exceptions import PermissionDenied
 import logging
 from .filters import ContributorFilter
 logger = logging.getLogger(__name__)
-
+from django.db import IntegrityError
 
 class FacultyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Faculty.objects.all().order_by('name')
@@ -200,22 +200,53 @@ class NoteViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def toggle_bookmark(self, request, pk=None):
-        try:
-            note = self.get_object()
-            user = request.user
+        logger.info(f"Received POST request to toggle bookmark for note ID: {pk}")
 
+        if not request.user.is_authenticated:
+            logger.warning(f"Bookmark toggle request failed: User not authenticated.")
+            return Response(
+                {"detail": "Authentication credentials were not provided."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        user = request.user
+        logger.info(f"Authenticated user: {user.username} (ID: {user.id})")
+
+        try:
+            # নোটটি খুঁজে বের করার চেষ্টা করা হচ্ছে
+            note = self.get_object() # Note.objects.get(pk=pk) যদি self.get_object() এটা করে থাকে
+            logger.info(f"Successfully retrieved note: '{note.title}' (ID: {note.id})")
+        except Note.DoesNotExist:
+            logger.warning(f"Bookmark toggle request failed: Note with ID {pk} not found.")
+            return Response(
+                {"detail": "Note not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error fetching note {pk}: {e}", exc_info=True)
+            return Response(
+                {"detail": "An error occurred while fetching the note."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        try:
+            # বুকমার্কের লজিক
             bookmark_instance = Bookmark.objects.filter(user=user, note=note).first()
 
             if bookmark_instance:
+                logger.info(f"User {user.username} unbookmarking note {note.id}")
                 bookmark_instance.delete()
                 bookmarked = False
                 message = "Note removed from bookmarks."
             else:
+                logger.info(f"User {user.username} bookmarking note {note.id}")
                 Bookmark.objects.create(user=user, note=note)
                 bookmarked = True
                 message = "Note bookmarked successfully."
 
+            # বুকমার্ক কাউন্ট আপডেট
             bookmarks_count = note.bookmarks.count()
+            logger.info(f"Bookmark toggle successful for note {note.id}. New count: {bookmarks_count}")
 
             return Response({
                 "message": message,
@@ -223,12 +254,15 @@ class NoteViewSet(viewsets.ModelViewSet):
                 "bookmarks_count": bookmarks_count
             }, status=status.HTTP_200_OK)
 
-        except Note.DoesNotExist:
+        except IntegrityError as ie:
+            # যদি একই ব্যবহারকারী একই নোট দুবার বুকমার্ক করার চেষ্টা করে (unique constraint violation)
+            logger.error(f"IntegrityError during bookmark toggle for note {pk} by {user.username}: {ie}", exc_info=True)
             return Response(
-                {"detail": "Note not found."},
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "You might have already bookmarked this note or there's a data integrity issue."},
+                status=status.HTTP_400_BAD_REQUEST # Bad Request হতে পারে এখানে
             )
         except Exception as e:
+            # অন্য কোনো সাধারণ এরর
             logger.error(f"Error toggling bookmark for note {pk} by {user.username}: {e}", exc_info=True)
             return Response(
                 {"detail": f"An error occurred: {str(e)}"},
