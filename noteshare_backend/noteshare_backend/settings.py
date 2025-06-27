@@ -17,7 +17,6 @@ DEBUG = config('DEBUG', default=False, cast=bool) # ✅ প্রোডাকশ
 RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default=None)
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
@@ -37,6 +36,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'users',
     'notes',
+    
     'rest_framework_simplejwt', 
     'rest_framework_simplejwt.token_blacklist', 
 ]
@@ -83,21 +83,23 @@ DATABASES = {
 # Internationalization (অপরিবর্তিত)
 # ...
 
-# ✅ CORS Settings আপডেট করা হয়েছে
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",          # Local development
-    "https://edumetro.onrender.com",  # আপনার প্রোডাকশন ফ্রন্টএন্ড URL
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
-if RENDER_EXTERNAL_HOSTNAME:
-    CORS_ALLOWED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
-# CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
-    "https://edumetro.onrender.com",
 ]
 if RENDER_EXTERNAL_HOSTNAME:
-    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+    CORS_ALLOWED_ORIGINS.append(f"https://your-frontend-app-name.onrender.com") 
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}") 
 
+CORS_ALLOWED_ORIGINS.append("https://edumetro.onrender.com")
+CORS_ALLOW_HEADERS = [
+    'accept', 'accept-encoding', 'authorization', 'content-type', 'dnt',
+    'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # ✅ Static and Media files for Production with WhiteNoise
 STATIC_URL = 'static/'
