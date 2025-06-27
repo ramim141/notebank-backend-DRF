@@ -200,8 +200,9 @@ class NoteViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def toggle_bookmark(self, request, pk=None):
-        logger.info(f"Received POST request to toggle bookmark for note ID: {pk}")
-
+        # logger.info(...) লাইনগুলো ঠিক জায়গায় আছে কিনা নিশ্চিত করুন।
+        
+        # 1. ব্যবহারকারীকে যাচাই করুন
         if not request.user.is_authenticated:
             logger.warning(f"Bookmark toggle request failed: User not authenticated.")
             return Response(
@@ -210,27 +211,40 @@ class NoteViewSet(viewsets.ModelViewSet):
             )
         
         user = request.user
-        logger.info(f"Authenticated user: {user.username} (ID: {user.id})")
+        # logger.info(f"Authenticated user: {user.username} (ID: {user.id})") # এই লগটি কাজ করার কথা, যদি ইউজার পাওয়া যায়
 
+        note = None # user এবং note কে শুরুর দিকে None ইনিশিয়ালাইজ করুন
         try:
-            # নোটটি খুঁজে বের করার চেষ্টা করা হচ্ছে
-            note = self.get_object() # Note.objects.get(pk=pk) যদি self.get_object() এটা করে থাকে
+            # 2. নোটটি খুঁজে বের করার চেষ্টা করুন। এখানে সঠিক কুয়েরি ব্যবহার করতে হবে।
+            # নিশ্চিত করুন যে আপনার queryset-এ `pk` দিয়ে নোট খুঁজে বের করার লজিক ঠিক আছে।
+            # সাধারণত, ModelViewSet-এর get_object() মেথডটি pk ব্যবহার করে অবজেক্ট খুঁজে বের করে।
+            # যদি pk দিয়ে একাধিক অবজেক্ট পাওয়া যায়, তাহলে MultipleObjectsReturned এরর আসবে।
+            note = self.get_object() # এটি get_object_or_404 এর মতো কাজ করে, কিন্তু যদি MultipleObjectsReturned হয় তবে এটি এরর দেবে।
             logger.info(f"Successfully retrieved note: '{note.title}' (ID: {note.id})")
+
         except Note.DoesNotExist:
             logger.warning(f"Bookmark toggle request failed: Note with ID {pk} not found.")
             return Response(
                 {"detail": "Note not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+        except Note.MultipleObjectsReturned:
+            # ✅ ✅ ✅ MultipleObjectsReturned এরর হ্যান্ডেল করা ✅ ✅ ✅
+            logger.error(f"Multiple notes found for PK {pk}. This should not happen with a unique primary key.", exc_info=True)
+            return Response(
+                {"detail": "Internal server error: Found multiple notes with the same ID."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         except Exception as e:
+            # নোট খুঁজতে অন্য কোনো এরর হলে
             logger.error(f"Unexpected error fetching note {pk}: {e}", exc_info=True)
             return Response(
                 {"detail": "An error occurred while fetching the note."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+        # এখন নিশ্চিত যে `note` অবজেক্টটি আছে এবং `user` অবজেক্টটিও আছে।
         try:
-            # বুকমার্কের লজিক
             bookmark_instance = Bookmark.objects.filter(user=user, note=note).first()
 
             if bookmark_instance:
@@ -244,7 +258,6 @@ class NoteViewSet(viewsets.ModelViewSet):
                 bookmarked = True
                 message = "Note bookmarked successfully."
 
-            # বুকমার্ক কাউন্ট আপডেট
             bookmarks_count = note.bookmarks.count()
             logger.info(f"Bookmark toggle successful for note {note.id}. New count: {bookmarks_count}")
 
@@ -255,19 +268,20 @@ class NoteViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
 
         except IntegrityError as ie:
-            # যদি একই ব্যবহারকারী একই নোট দুবার বুকমার্ক করার চেষ্টা করে (unique constraint violation)
+            # ✅ যদি ব্যবহারকারী একই নোট দুবার বুকমার্ক করার চেষ্টা করে (unique constraint violation)
             logger.error(f"IntegrityError during bookmark toggle for note {pk} by {user.username}: {ie}", exc_info=True)
             return Response(
                 {"detail": "You might have already bookmarked this note or there's a data integrity issue."},
-                status=status.HTTP_400_BAD_REQUEST # Bad Request হতে পারে এখানে
+                status=status.HTTP_400_BAD_REQUEST 
             )
         except Exception as e:
-            # অন্য কোনো সাধারণ এরর
+            # ✅ অন্য কোনো সাধারণ এরর হলে, তার লগ রাখুন
             logger.error(f"Error toggling bookmark for note {pk} by {user.username}: {e}", exc_info=True)
             return Response(
                 {"detail": f"An error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 
     @action(detail=False, methods=['get'], url_path='my-notes')
