@@ -54,6 +54,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'last_name', 
             'student_id', 
             'department', 
+            'department_name',
             'batch', 
             'section'
             )
@@ -62,7 +63,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'last_name': {'required': False},
             'email': {'required': True}, 
             'student_id': {'required': True}, 
-            'department': {'required': False}, 
+            'department': {'required': False, 'allow_null': True},
             'batch': {'required': False},
             'section': {'required': False},
             
