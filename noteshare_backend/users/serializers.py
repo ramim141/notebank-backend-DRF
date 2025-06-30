@@ -3,8 +3,9 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from taggit.managers import TaggableManager
 import logging
+from django.db import models
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from notes.models import Department
+from notes.models import Department, Note
 logger = logging.getLogger(__name__)
 
 User = get_user_model() 
@@ -93,6 +94,13 @@ class UserSerializer(serializers.ModelSerializer):
     skills = CustomTaggitSerializerField(required=False)
     department_name = serializers.CharField(source='department.name', read_only=True, allow_null=True)
 
+    total_notes_uploaded = serializers.SerializerMethodField(read_only=True)
+    total_notes_liked_by_others = serializers.SerializerMethodField(read_only=True)
+    total_notes_downloaded = serializers.SerializerMethodField(read_only=True)
+    total_notes_bookmarked_by_others = serializers.SerializerMethodField(read_only=True)
+    total_bookmarked_notes_by_user = serializers.SerializerMethodField(read_only=True)
+    
+    
     class Meta:
         model = User
         fields = (
@@ -101,10 +109,20 @@ class UserSerializer(serializers.ModelSerializer):
             'batch', 'section',
             'profile_picture_url', 
             'bio', 'mobile_number', 'university', 'website', 
-            'birthday', 'gender', 'skills'
+            'birthday', 'gender', 'skills',
+            'total_notes_uploaded',
+            'total_notes_liked_by_others',
+            'total_notes_downloaded',
+            'total_notes_bookmarked_by_others',
+            'total_bookmarked_notes_by_user',
         )
         read_only_fields = (
-            'username', 'id', 'is_email_verified', 'student_id', 'profile_picture_url', 'department_name'
+            'username', 'id', 'is_email_verified', 'student_id', 'profile_picture_url', 'department_name',
+            'total_notes_uploaded',
+            'total_notes_liked_by_others',
+            'total_notes_downloaded',
+            'total_notes_bookmarked_by_others',
+            'total_bookmarked_notes_by_user',
         )
         extra_kwargs = {
             'first_name': {'required': False},
@@ -126,6 +144,16 @@ class UserSerializer(serializers.ModelSerializer):
           
             return obj.profile_picture.url
         return None
+    def get_total_notes_uploaded(self, obj): 
+        return Note.objects.filter(uploader=obj).count()
+    def get_total_notes_liked_by_others(self, obj): 
+        return Note.objects.filter(uploader=obj, likes__isnull=False).distinct().count()
+    def get_total_notes_downloaded(self, obj): 
+        return Note.objects.filter(uploader=obj).aggregate(total_downloads=models.Sum('download_count'))['total_downloads'] or 0
+    def get_total_notes_bookmarked_by_others(self, obj): 
+        return Note.objects.filter(uploader=obj, bookmarks__isnull=False).distinct().count()
+    def get_total_bookmarked_notes_by_user(self, obj): 
+        return obj.bookmarked_notes.count()
     
     def update(self, instance, validated_data):
         # Department আপডেট
