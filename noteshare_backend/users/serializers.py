@@ -90,7 +90,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return value
 
 class UserSerializer(serializers.ModelSerializer):
-    profile_picture_url = serializers.SerializerMethodField(read_only=True)
+    profile_picture_url = serializers.SerializerMethodField()
     skills = CustomTaggitSerializerField(required=False)
     department_name = serializers.CharField(source='department.name', read_only=True, allow_null=True)
 
@@ -140,9 +140,9 @@ class UserSerializer(serializers.ModelSerializer):
         }
             
     def get_profile_picture_url(self, obj):
+        request = self.context.get('request')
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
-          
-            return obj.profile_picture.url
+            return request.build_absolute_uri(obj.profile_picture.url)
         return None
     def get_total_notes_uploaded(self, obj): 
         return Note.objects.filter(uploader=obj).count()
