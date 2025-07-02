@@ -11,6 +11,7 @@ from django.http import FileResponse, Http404
 import os
 from django.views.decorators.cache import never_cache
 from django.utils.decorators import method_decorator
+import mimetypes
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
@@ -493,8 +494,10 @@ def download_note_file(request, pk):
             print(f"File does not exist: {file_path}")
             raise Http404("File not found.")
         file_name = os.path.basename(file_path)
-        response = FileResponse(open(file_path, 'rb'))
-        response['Content-Disposition'] = f'attachment; filename=\"{file_name}\"'
+        mime_type, _ = mimetypes.guess_type(file_path)
+        response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename=file_name)
+        if mime_type:
+            response['Content-Type'] = mime_type
         return response
     except Note.DoesNotExist:
         print(f"Note not found: {pk}")
