@@ -480,13 +480,19 @@ def download_note_file(request, pk):
     try:
         note = Note.objects.get(pk=pk)
         if not note.file:
+            print(f"Note {pk} has no file.")
             raise Http404("File not found.")
         file_path = note.file.path
+        if not os.path.exists(file_path):
+            print(f"File does not exist: {file_path}")
+            raise Http404("File not found.")
         file_name = os.path.basename(file_path)
         response = FileResponse(open(file_path, 'rb'))
         response['Content-Disposition'] = f'attachment; filename=\"{file_name}\"'
         return response
     except Note.DoesNotExist:
+        print(f"Note not found: {pk}")
         raise Http404("Note not found.")
     except Exception as e:
+        print(f"Error serving file for note {pk}: {e}")
         raise Http404("File not found.")
