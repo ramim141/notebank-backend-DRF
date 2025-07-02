@@ -3,10 +3,12 @@
 from rest_framework import viewsets, permissions, status, serializers, generics
 import rest_framework
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.http import FileResponse, Http404
+import os
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
@@ -19,7 +21,6 @@ import logging
 from .filters import ContributorFilter
 logger = logging.getLogger(__name__)
 from django.db import IntegrityError
-from django.http import Http404
 
 class FacultyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Faculty.objects.all().order_by('name')
@@ -472,3 +473,20 @@ class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
     # filterset_fields = ['user__department']
     filterset_class = ContributorFilter
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def download_note_file(request, pk):
+    try:
+        note = Note.objects.get(pk=pk)
+        if not note.file:
+            raise Http404("File not found.")
+        file_path = note.file.path
+        file_name = os.path.basename(file_path)
+        response = FileResponse(open(file_path, 'rb'))
+        response['Content-Disposition'] = f'attachment; filename=\"{file_name}\"'
+        return response
+    except Note.DoesNotExist:
+        raise Http404("Note not found.")
+    except Exception as e:
+        raise Http404("File not found.")

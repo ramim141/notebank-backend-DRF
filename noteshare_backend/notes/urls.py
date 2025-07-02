@@ -1,7 +1,7 @@
 # notes/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import NoteViewSet, StarRatingViewSet, CommentViewSet, DepartmentViewSet, CourseViewSet, NoteCategoryViewSet, NoteRequestListCreateView, FacultyViewSet, ContributorViewSet  
+from .views import NoteViewSet, StarRatingViewSet, CommentViewSet, DepartmentViewSet, CourseViewSet, NoteCategoryViewSet, NoteRequestListCreateView, FacultyViewSet, ContributorViewSet, download_note_file
 
 
 router = DefaultRouter()
@@ -19,5 +19,5 @@ urlpatterns = [
     path('note-requests/', NoteRequestListCreateView.as_view(), name='note-request-list-create'),
     path('', include(router.urls)), 
     # path('my-notes/', MyNotesView.as_view(), name='my_notes'),
-    
+    path('download/<int:pk>/', download_note_file, name='download_note_file'),
 ]
