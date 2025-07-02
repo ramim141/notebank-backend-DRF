@@ -116,3 +116,12 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API documentation for the Note Sharing Platform project.',
     'VERSION': '1.0.0', 'SERVE_INCLUDE_SCHEMA': False, 'COMPONENT_SPLIT_REQUEST': True, 
 }
+
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://your-production-frontend.com",
+]
+
+origin = request.headers.get("Origin")
+if origin in ALLOWED_ORIGINS:
+    response["Access-Control-Allow-Origin"] = origin
