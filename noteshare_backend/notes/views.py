@@ -9,6 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.http import FileResponse, Http404
 import os
+from django.views.decorators.cache import never_cache
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
@@ -146,6 +147,7 @@ class NoteViewSet(viewsets.ModelViewSet):
 
 
     @action(detail=True, methods=['get'])
+    @never_cache
     def download(self, request, pk=None):
         note = self.get_object()
         note.download_count = F('download_count') + 1
