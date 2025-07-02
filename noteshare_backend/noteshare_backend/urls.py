@@ -1,3 +1,4 @@
+
 from django.contrib import admin
 from django.urls import path, include 
 from django.conf import settings 
@@ -16,8 +17,7 @@ urlpatterns = [
     
     
 ]
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
 
+# শুধুমাত্র DEBUG মোডে মিডিয়া ফাইল সার্ভ করার জন্য এই লাইনটি থাকবে
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

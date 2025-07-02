@@ -161,12 +161,13 @@ class UserSerializer(serializers.ModelSerializer):
         if department is not None:
             instance.department = department
 
-        # Profile picture আপডেট
         profile_picture = validated_data.pop('profile_picture', None)
         if profile_picture is not None:
             if profile_picture == '':
+                # This part handles REMOVING the picture if an empty string is sent
                 instance.profile_picture.delete()
             else:
+                # 2. THIS LINE ASSIGNS THE NEW FILE TO THE USER MODEL INSTANCE
                 instance.profile_picture = profile_picture
         
         # Skills আপডেট
@@ -211,9 +212,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
     def validate_email(self, value):
-        try:
-            User.objects.get(email=value)
-        except User.DoesNotExist:
+        if not User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("No user is associated with this email address.")
         return value
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 
-# --- BASE_DIR, SECRET_KEY, DEBUG, ALLOWED_HOSTS (অপরিবর্তিত) ---
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
@@ -14,8 +14,9 @@ RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default=None)
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+# settings.py
+FRONTEND_URL = "http://localhost:5173"
 
-# --- INSTALLED_APPS, MIDDLEWARE (অপরিবর্তিত) ---
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
     'django.contrib.sessions', 'django.contrib.messages', 'whitenoise.runserver_nostatic',
@@ -31,7 +32,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# --- ROOT_URLCONF, TEMPLATES, WSGI_APPLICATION, AUTH_USER_MODEL (অপরিবর্তিত) ---
+
 ROOT_URLCONF = 'noteshare_backend.urls'
 TEMPLATES = [
     {
@@ -46,14 +47,13 @@ TEMPLATES = [
 WSGI_APPLICATION = 'noteshare_backend.wsgi.application'
 AUTH_USER_MODEL = 'users.User'
 
-# --- Database (অপরিবর্তিত) ---
+
 DATABASES = {
     'default': dj_database_url.parse(config('DATABASE_URL'))
 }
 
 
-# ✅✅✅ এই ব্লকটি যুক্ত করুন ✅✅✅
-# --- REST FRAMEWORK and SIMPLE JWT Configuration ---
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -76,7 +76,7 @@ SIMPLE_JWT = {
 }
 
 
-# --- CORS and CSRF Settings (অপরিবর্তিত) ---
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -96,7 +96,7 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOW_CREDENTIALS = True
 
 
-# --- বাকি সব কোড অপরিবর্তিত থাকবে ---
+
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
