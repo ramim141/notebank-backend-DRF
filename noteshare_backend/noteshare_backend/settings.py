@@ -121,7 +121,3 @@ ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://your-production-frontend.com",
 ]
-
-origin = request.headers.get("Origin")
-if origin in ALLOWED_ORIGINS:
-    response["Access-Control-Allow-Origin"] = origin

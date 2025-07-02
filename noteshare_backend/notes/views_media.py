@@ -24,6 +24,8 @@ def serve_protected_media(request, path):
     if not os.path.exists(file_path):
         raise Http404("File not found")
     response = FileResponse(open(file_path, 'rb'))
-    response["Access-Control-Allow-Origin"] = "http://localhost:5173"
+    origin = request.headers.get("Origin")
+    if origin in settings.ALLOWED_ORIGINS:
+        response["Access-Control-Allow-Origin"] = origin
     response["Access-Control-Allow-Credentials"] = "true"
     return response 
