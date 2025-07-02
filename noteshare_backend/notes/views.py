@@ -10,6 +10,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.http import FileResponse, Http404
 import os
 from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
@@ -146,22 +147,25 @@ class NoteViewSet(viewsets.ModelViewSet):
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+    @method_decorator(never_cache)
     @action(detail=True, methods=['get'])
-    @never_cache
     def download(self, request, pk=None):
         note = self.get_object()
-        note.download_count = F('download_count') + 1
-        note.save(update_fields=['download_count'])
-        note.refresh_from_db()
-
-        file_url = ""
         if note.file and hasattr(note.file, 'url'):
             file_url = request.build_absolute_uri(note.file.url)
-        return Response({
-            "detail": "Download initiated (count incremented). Please use the file_url to download.",
-            "file_url": file_url,
-            "download_count": note.download_count
-        }, status=status.HTTP_200_OK)
+            note.download_count = F('download_count') + 1
+            note.save(update_fields=['download_count'])
+            note.refresh_from_db()
+            return Response({
+                "detail": "Download initiated (count incremented). Please use the file_url to download.",
+                "file_url": file_url,
+                "download_count": note.download_count
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "detail": "File not found.",
+                "file_url": None
+            }, status=status.HTTP_404_NOT_FOUND)
 
 
     @action(detail=True, methods=['post'])
