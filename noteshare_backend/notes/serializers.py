@@ -1,5 +1,6 @@
 # notes/serializers.py
 from rest_framework import serializers
+from rest_framework.reverse import reverse
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory, NoteRequest,Faculty,Contributor
@@ -11,10 +12,7 @@ User = get_user_model()
 
 class ContributorSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    # batch = serializers.CharField(source='user.batch', read_only=True)
-    # section = serializers.CharField(source='user.section', read_only=True)
     batch_with_section = serializers.SerializerMethodField()
-    
     department_name = serializers.CharField(source='user.department.name', read_only=True, allow_null=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     
@@ -22,8 +20,6 @@ class ContributorSerializer(serializers.ModelSerializer):
         model = Contributor
         fields = [
             'full_name',
-            # 'batch',
-            # 'section',
             'batch_with_section',
             'department_name',
             'email',
@@ -50,25 +46,11 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = ['id', 'name']
 
-# notes/serializers.py
-
-class DepartmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Department
-        fields = ['id', 'name']
-
 class CourseSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     class Meta:
         model = Course
         fields = ['id', 'name', 'department', 'department_name']
-        # extra_kwargs = {                 # ❌ এই ব্লকটি সম্পূর্ণভাবে সরিয়ে দিন
-        #     'department': {'write_only': True}
-        # }
-        # অথবা শুধু 'write_only' ট্রু কে False বা সরিয়ে দিন:
-        # extra_kwargs = {
-        #     'department': {'write_only': False} # অথবা এই লাইনটিই সরিয়ে দিন
-        # }
 
 
 class NoteCategorySerializer(serializers.ModelSerializer):
@@ -76,9 +58,6 @@ class NoteCategorySerializer(serializers.ModelSerializer):
         model = NoteCategory
         fields = ['id', 'name', 'description']
 
-
-
-# StarRatingSerializer
 class StarRatingSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_first_name = serializers.CharField(source='user.first_name', read_only=True)
@@ -224,10 +203,8 @@ class NoteSerializer(serializers.ModelSerializer):
 
     def get_file_url(self, obj):
         request = self.context.get('request')
-        if obj.file and hasattr(obj.file, 'url'):
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
+        if obj.file and hasattr(obj.file, 'url') and request:
+            return reverse('secure-note-download', kwargs={'pk': obj.pk}, request=request)
         return None
 
     def get_likes_count(self, obj):
@@ -293,29 +270,6 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return super().create(validated_data)
-
-
-# class NotificationSerializer(serializers.ModelSerializer):
-#     actor = serializers.StringRelatedField(read_only=True, allow_null=True)
-#     target = serializers.StringRelatedField(read_only=True, allow_null=True)
-#     action_object = serializers.StringRelatedField(read_only=True, allow_null=True)
-
-
-#     class Meta:
-#         model = Notification
-#         fields = (
-#             'id',
-#             'level',
-#             'recipient',
-#             'unread',
-#             'timestamp',
-#             'verb',
-#             'description',
-#             'actor',
-#             'target',
-#             'action_object',
-#         )
-#         read_only_fields = fields
 
 
 class NoteRequestSerializer(serializers.ModelSerializer):

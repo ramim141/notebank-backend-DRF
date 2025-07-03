@@ -12,6 +12,7 @@ import os
 from django.views.decorators.cache import never_cache
 from django.utils.decorators import method_decorator
 import mimetypes
+from rest_framework.reverse import reverse
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
@@ -140,33 +141,25 @@ class NoteViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        response_data = serializer.data
         response_data = {
             "message": "Note submitted, wait for admin approval.", 
             "note": serializer.data
         }
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
-
     @method_decorator(never_cache)
     @action(detail=True, methods=['get'])
     def download(self, request, pk=None):
         note = self.get_object()
-        if note.file and hasattr(note.file, 'url'):
-            file_url = request.build_absolute_uri(note.file.url)
-            note.download_count = F('download_count') + 1
-            note.save(update_fields=['download_count'])
-            note.refresh_from_db()
-            return Response({
-                "detail": "Download initiated (count incremented). Please use the file_url to download.",
-                "file_url": file_url,
-                "download_count": note.download_count
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                "detail": "File not found.",
-                "file_url": None
-            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # নিরাপদ ডাউনলোড ভিউ-এর জন্য একটি সম্পূর্ণ URL তৈরি করুন
+        # 'download_note_file' নামটি urls.py থেকে আসছে
+        secure_download_url = reverse('secure-note-download', kwargs={'pk': note.pk}, request=request)
+        
+        return Response({
+            "detail": "Please use the secure_download_url to download the file.",
+            "secure_download_url": secure_download_url
+        }, status=status.HTTP_200_OK)
 
 
     @action(detail=True, methods=['post'])
@@ -209,9 +202,6 @@ class NoteViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def toggle_bookmark(self, request, pk=None):
-        # logger.info(...) লাইনগুলো ঠিক জায়গায় আছে কিনা নিশ্চিত করুন।
-        
-        # 1. ব্যবহারকারীকে যাচাই করুন
         if not request.user.is_authenticated:
             logger.warning(f"Bookmark toggle request failed: User not authenticated.")
             return Response(
@@ -220,15 +210,9 @@ class NoteViewSet(viewsets.ModelViewSet):
             )
         
         user = request.user
-        # logger.info(f"Authenticated user: {user.username} (ID: {user.id})") # এই লগটি কাজ করার কথা, যদি ইউজার পাওয়া যায়
-
-        note = None # user এবং note কে শুরুর দিকে None ইনিশিয়ালাইজ করুন
+        note = None
         try:
-            # 2. নোটটি খুঁজে বের করার চেষ্টা করুন। এখানে সঠিক কুয়েরি ব্যবহার করতে হবে।
-            # নিশ্চিত করুন যে আপনার queryset-এ `pk` দিয়ে নোট খুঁজে বের করার লজিক ঠিক আছে।
-            # সাধারণত, ModelViewSet-এর get_object() মেথডটি pk ব্যবহার করে অবজেক্ট খুঁজে বের করে।
-            # যদি pk দিয়ে একাধিক অবজেক্ট পাওয়া যায়, তাহলে MultipleObjectsReturned এরর আসবে।
-            note = self.get_object() # এটি get_object_or_404 এর মতো কাজ করে, কিন্তু যদি MultipleObjectsReturned হয় তবে এটি এরর দেবে।
+            note = self.get_object()
             logger.info(f"Successfully retrieved note: '{note.title}' (ID: {note.id})")
 
         except Note.DoesNotExist:
@@ -238,21 +222,18 @@ class NoteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         except Note.MultipleObjectsReturned:
-            # ✅ ✅ ✅ MultipleObjectsReturned এরর হ্যান্ডেল করা ✅ ✅ ✅
             logger.error(f"Multiple notes found for PK {pk}. This should not happen with a unique primary key.", exc_info=True)
             return Response(
                 {"detail": "Internal server error: Found multiple notes with the same ID."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         except Exception as e:
-            # নোট খুঁজতে অন্য কোনো এরর হলে
             logger.error(f"Unexpected error fetching note {pk}: {e}", exc_info=True)
             return Response(
                 {"detail": "An error occurred while fetching the note."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # এখন নিশ্চিত যে `note` অবজেক্টটি আছে এবং `user` অবজেক্টটিও আছে।
         try:
             bookmark_instance = Bookmark.objects.filter(user=user, note=note).first()
 
@@ -277,14 +258,12 @@ class NoteViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
 
         except IntegrityError as ie:
-            # ✅ যদি ব্যবহারকারী একই নোট দুবার বুকমার্ক করার চেষ্টা করে (unique constraint violation)
             logger.error(f"IntegrityError during bookmark toggle for note {pk} by {user.username}: {ie}", exc_info=True)
             return Response(
                 {"detail": "You might have already bookmarked this note or there's a data integrity issue."},
                 status=status.HTTP_400_BAD_REQUEST 
             )
         except Exception as e:
-            # ✅ অন্য কোনো সাধারণ এরর হলে, তার লগ রাখুন
             logger.error(f"Error toggling bookmark for note {pk} by {user.username}: {e}", exc_info=True)
             return Response(
                 {"detail": f"An error occurred: {str(e)}"},
@@ -404,57 +383,9 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user, note=note_instance)
 
 
-# class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
-#     serializer_class = NotificationSerializer
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def get_queryset(self):
-#         """
-#         This view should return a list of all the notifications
-#         for the currently authenticated user.
-#         """
-#         return self.request.user.notifications.all().order_by('-timestamp')
-
-#     @action(detail=False, methods=['get'], url_path='unread')
-#     def unread_notifications(self, request):
-#         """
-#         Returns a list of unread notifications for the current user.
-#         """
-#         queryset = self.request.user.notifications.unread().order_by('-timestamp')
-#         page = self.paginate_queryset(queryset)
-#         if page is not None:
-#             serializer = self.get_serializer(page, many=True)
-#             return self.get_paginated_response(serializer.data)
-#         serializer = self.get_serializer(queryset, many=True)
-#         return Response(serializer.data)
-
-#     @action(detail=False, methods=['post'], url_path='mark-all-as-read')
-#     def mark_all_as_read(self, request):
-#         self.request.user.notifications.mark_all_as_read()
-#         return Response({"message": "All notifications marked as read."}, status=status.HTTP_200_OK)
-
-#     @action(detail=True, methods=['post'], url_path='mark-as-read') # URL: /notifications/{pk}/mark-as-read/
-#     def mark_as_read(self, request, pk=None):
-#         notification = get_object_or_404(Notification, recipient=request.user, pk=pk)
-#         notification.mark_as_read()
-#         return Response({"message": "Notification marked as read."}, status=status.HTTP_200_OK)
-
-#     @action(detail=True, methods=['post'], url_path='mark-as-unread') # URL: /notifications/{pk}/mark-as-unread/
-#     def mark_as_unread(self, request, pk=None):
-#         notification = get_object_or_404(Notification, recipient=request.user, pk=pk)
-#         notification.mark_as_unread()
-#         return Response({"message": "Notification marked as unread."}, status=status.HTTP_200_OK)
-
-#     @action(detail=False, methods=['get'], url_path='unread-count')
-#     def unread_count(self, request):
-#         count = self.request.user.notifications.unread().count()
-#         return Response({"unread_count": count}, status=status.HTTP_200_OK)
-
-
-
 class NoteRequestListCreateView(generics.ListCreateAPIView):
     serializer_class = NoteRequestSerializer
-    permission_classes = [permissions.IsAuthenticated] # শুধুমাত্র লগইন করা ব্যবহারকারীরাই অ্যাক্সেস পাবে
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return NoteRequest.objects.filter(user=self.request.user)
@@ -465,10 +396,6 @@ class NoteRequestListCreateView(generics.ListCreateAPIView):
 
 
 class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Provides a read-only list of contributor profiles.
-    The data comes from the pre-calculated Contributor model.
-    """
     serializer_class = ContributorSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -477,7 +404,6 @@ class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
     ).order_by('-note_contribution_count', '-average_star_rating')
     
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    # filterset_fields = ['user__department']
     filterset_class = ContributorFilter
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']
 
@@ -486,22 +412,32 @@ class ContributorViewSet(viewsets.ReadOnlyModelViewSet):
 def download_note_file(request, pk):
     try:
         note = Note.objects.get(pk=pk)
+        
+        note.download_count = F('download_count') + 1
+        note.save(update_fields=['download_count'])
+        note.refresh_from_db()
+
         if not note.file:
-            print(f"Note {pk} has no file.")
+            logger.warning(f"Note {pk} has no file associated.")
             raise Http404("File not found.")
+            
         file_path = note.file.path
         if not os.path.exists(file_path):
-            print(f"File does not exist: {file_path}")
+            logger.error(f"File for note {pk} does not exist on disk at: {file_path}")
             raise Http404("File not found.")
+            
         file_name = os.path.basename(file_path)
         mime_type, _ = mimetypes.guess_type(file_path)
+        
         response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename=file_name)
         if mime_type:
             response['Content-Type'] = mime_type
+            
         return response
+        
     except Note.DoesNotExist:
-        print(f"Note not found: {pk}")
+        logger.warning(f"Download request for non-existent note: {pk}")
         raise Http404("Note not found.")
     except Exception as e:
-        print(f"Error serving file for note {pk}: {e}")
-        raise Http404("File not found.")
+        logger.error(f"Error serving file for note {pk}: {e}", exc_info=True)
+        raise Http404("An error occurred while trying to serve the file.")
