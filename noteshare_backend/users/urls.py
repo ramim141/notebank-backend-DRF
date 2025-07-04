@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import (
 )
 from .views import (
     UserRegistrationView, CustomTokenObtainPairView, UserProfileView, ChangePasswordView , EmailVerificationView, PasswordResetRequestView, PasswordResetConfirmView
-    , UserLinkedNotesViewSet, SiteStatsView 
+    , UserLinkedNotesViewSet, SiteStatsView , DashboardDataView 
 )
 
 from rest_framework.routers import DefaultRouter
@@ -32,5 +32,6 @@ urlpatterns = [
     path('password-reset-confirm/<str:uidb64>/<str:token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('', include(router.urls)),
     path('site-stats/', SiteStatsView.as_view(), name='site-stats'),
+    path('dashboard/', DashboardDataView.as_view(), name='dashboard-data'),
     
 ]

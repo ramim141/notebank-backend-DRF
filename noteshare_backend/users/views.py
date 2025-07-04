@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView 
 from rest_framework.decorators import action
-
+from rest_framework.permissions import IsAuthenticated
 from .serializers import UserRegistrationSerializer, UserSerializer, ChangePasswordSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from django.core.mail import send_mail
 from django.template.loader import render_to_string 
@@ -26,7 +26,7 @@ from django.db.models import Case, When, Value, BooleanField
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import NoteFilter 
 from .serializers import UserSerializer
-
+from django.db.models import Count, Sum
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
 User = get_user_model()
@@ -381,3 +381,64 @@ class BookmarkedNotesView(generics.ListAPIView):
         )
         
         return queryset.order_by('-bookmarks__created_at')
+
+
+
+class DashboardDataView(APIView):
+    """
+    Provides consolidated data for the user dashboard in a single API call.
+    This view is optimized to reduce the number of database queries.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        # 1. User Profile & Personal Stats (এখন UserSerializer থেকেই সব আসছে)
+        user_serializer = UserSerializer(user, context={'request': request})
+        user_data_with_stats = user_serializer.data
+
+        # এখন stats_data অবজেক্টটি UserSerializer থেকে আসা ডেটা দিয়ে তৈরি হবে
+        stats_data = {
+            'uploads': user_data_with_stats.get('total_notes_uploaded', 0),
+            'downloads': user_data_with_stats.get('total_notes_downloaded', 0),
+            'totalReviews': user_data_with_stats.get('total_reviews_received', 0),
+            'avgRating': user_data_with_stats.get('average_rating_of_all_notes', 0.0),
+        }
+
+        # 2. Recent Notes (অপরিবর্তিত)
+        recent_notes_qs = Note.objects.filter(
+            uploader=user
+        ).order_by('-created_at')[:5]
+        recent_notes_data = NoteSerializer(recent_notes_qs, many=True, context={'request': request}).data
+
+        # 3. Recent Bookmarks (অপরিবর্তিত)
+        bookmarked_notes_qs = Note.objects.filter(
+            bookmarks__user=user,
+            is_approved=True
+        ).order_by('-bookmarks__created_at')[:5]
+        recent_bookmarks_data = NoteSerializer(bookmarked_notes_qs, many=True, context={'request': request}).data
+
+        # 4. Category Distribution for Pie Chart (অপরিবর্তিত)
+        category_distribution = Note.objects.filter(uploader=user) \
+                                        .values('category__name') \
+                                        .annotate(value=Count('id')) \
+                                        .order_by('-value')
+        
+        pie_chart_colors = ["#6366F1", "#EC4899", "#F59E0B", "#10B981", "#8B5CF6", "#F43F5E"]
+        
+        pie_chart_data = [
+            {**item, 'name': item['category__name'], 'color': pie_chart_colors[i % len(pie_chart_colors)]}
+            for i, item in enumerate(category_distribution) if item.get('category__name')
+        ]
+
+        # চূড়ান্ত রেসপন্স ডেটা
+        dashboard_data = {
+            'user': user_data_with_stats,
+            'stats': stats_data,
+            'myNotes': recent_notes_data,
+            'bookmarks': recent_bookmarks_data,
+            'performanceData': pie_chart_data,
+        }
+
+        return Response(dashboard_data, status=status.HTTP_200_OK)

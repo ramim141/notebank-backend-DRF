@@ -5,7 +5,8 @@ from taggit.managers import TaggableManager
 import logging
 from django.db import models
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from notes.models import Department, Note
+from notes.models import Department, Note, Comment 
+from django.db.models import Avg, Sum, Count
 logger = logging.getLogger(__name__)
 
 User = get_user_model() 
@@ -99,8 +100,8 @@ class UserSerializer(serializers.ModelSerializer):
     total_notes_downloaded = serializers.SerializerMethodField(read_only=True)
     total_notes_bookmarked_by_others = serializers.SerializerMethodField(read_only=True)
     total_bookmarked_notes_by_user = serializers.SerializerMethodField(read_only=True)
-    
-    
+    average_rating_of_all_notes = serializers.SerializerMethodField(read_only=True)
+    total_reviews_received = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = User
         fields = (
@@ -115,6 +116,8 @@ class UserSerializer(serializers.ModelSerializer):
             'total_notes_downloaded',
             'total_notes_bookmarked_by_others',
             'total_bookmarked_notes_by_user',
+            'average_rating_of_all_notes',
+            'total_reviews_received',
         )
         read_only_fields = (
             'username', 'id', 'is_email_verified', 'student_id', 'profile_picture_url', 'department_name',
@@ -123,6 +126,8 @@ class UserSerializer(serializers.ModelSerializer):
             'total_notes_downloaded',
             'total_notes_bookmarked_by_others',
             'total_bookmarked_notes_by_user',
+            'total_reviews_received',
+            'average_rating_of_all_notes',
         )
         extra_kwargs = {
             'first_name': {'required': False},
@@ -154,6 +159,15 @@ class UserSerializer(serializers.ModelSerializer):
         return Note.objects.filter(uploader=obj, bookmarks__isnull=False).distinct().count()
     def get_total_bookmarked_notes_by_user(self, obj): 
         return obj.bookmarked_notes.count()
+    
+    def get_average_rating_of_all_notes(self, obj):
+        avg_rating = Note.objects.filter(uploader=obj, is_approved=True) \
+                                 .aggregate(avg_rating=Avg('star_ratings__stars'))['avg_rating']
+        return round(avg_rating, 2) if avg_rating else 0.0
+    
+    def get_total_reviews_received(self, obj):
+        return Comment.objects.filter(note__uploader=obj).count()
+    
     
     def update(self, instance, validated_data):
         # Department আপডেট
