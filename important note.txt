@@ -1,7 +1,0 @@
-1. Note ( Faculty name) done
-2. User note update korte parbe.
-3. User eccha korle note delete korte parbe. done
-4. Lab sheet category done
-5. Optional: Cover page Generate
-6. Note Contribution list: ( Name, Batch, Depart, Section, email, star_rating) done
-7. Option: Faculty list ( Name, Department, designation, previous course, batch, section)
