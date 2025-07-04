@@ -73,9 +73,13 @@ AUTH_USER_MODEL = 'users.User'
 
 # --- Database ---
 DATABASES = {
-    'default': dj_database_url.parse(config('DATABASE_URL'))
+    'default': dj_database_url.config(
+     
+        default=os.environ.get('DATABASE_URL'),
+        
+        ssl_require=True
+    )
 }
-DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 
 
 # --- Security and Hosting ---
