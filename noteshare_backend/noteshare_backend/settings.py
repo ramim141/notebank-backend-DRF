@@ -75,6 +75,7 @@ AUTH_USER_MODEL = 'users.User'
 DATABASES = {
     'default': dj_database_url.parse(config('DATABASE_URL'))
 }
+DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 
 
 # --- Security and Hosting ---
@@ -96,7 +97,7 @@ CSRF_TRUSTED_ORIGINS = [
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-# ⬇️⬇️⬇️ --- Updated and Corrected CORS Configuration --- ⬇️⬇️⬇️
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -121,7 +122,7 @@ CORS_ALLOW_HEADERS = [
 
 CORS_EXPOSE_HEADERS = ['Content-Disposition']
 CORS_ALLOW_CREDENTIALS = True
-# ⬆️⬆️⬆️ --- End of CORS Configuration --- ⬆️⬆️⬆️
+
 
 
 # --- Django REST Framework & JWT ---
