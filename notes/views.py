@@ -14,7 +14,7 @@ from django.utils.decorators import method_decorator
 import mimetypes
 from rest_framework.reverse import reverse
 from django.db.models import Exists, OuterRef
-
+from rest_framework.pagination import PageNumberPagination
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
 from .permissions import IsOwnerOrReadOnly, IsRatingOrCommentOwnerOrReadOnly
@@ -38,11 +38,14 @@ class NoteCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = NoteCategorySerializer
     permission_classes = [permissions.AllowAny]
 
-
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10 
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 class NoteViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options']
     serializer_class = NoteSerializer
-
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = {
         'category__name': ['exact', 'icontains'],
