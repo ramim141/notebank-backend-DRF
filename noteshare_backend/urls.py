@@ -12,7 +12,7 @@ urlpatterns = [
     
 
     path('api/users/', include('users.urls')),
-    path('api/notes/', include('notes.urls')),
+    path('api/', include('notes.urls')),
     
  
     path('download/note/<int:pk>/', download_note_file, name='secure-note-download'),
