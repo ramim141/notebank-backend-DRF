@@ -65,7 +65,7 @@ class NoteViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'download_count', 'average_rating', 'title']
     
     def get_permissions(self):
-
+        # FIX: Added 'download' to IsAuthenticated permission check
         if self.action in ['list', 'retrieve']:
             permission_classes = [permissions.AllowAny] 
         elif self.action in ['create', 'download', 'toggle_like', 'toggle_bookmark', 'my_uploaded_notes']:
@@ -80,7 +80,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Note.objects.all()
 
-        queryset = queryset.select_related('uploader', 'department', 'course', 'category').prefetch_related(
+        queryset = queryset.select_related('uploader', 'department', 'course', 'category', 'faculty').prefetch_related(
             'star_ratings',
             'comments',
             'likes',
@@ -90,19 +90,18 @@ class NoteViewSet(viewsets.ModelViewSet):
     
         base_annotations = {
             'calculated_average_rating': Coalesce(Avg('star_ratings__stars'), Value(0.0)),
-            'calculated_likes_count': Count('likes', distinct=True),
-            'calculated_bookmarks_count': Count('bookmarks', distinct=True),
+            'likes_count': Count('likes', distinct=True),
+            'bookmarks_count': Count('bookmarks', distinct=True),
         }
 
         if user.is_authenticated:
-            
             user_specific_annotations = {
-                'is_liked_by_current_user_annotated': Case(
+                'is_liked_by_current_user': Case(
                     When(likes__user=user, then=Value(True)), 
                     default=Value(False),
                     output_field=BooleanField()
                 ),
-                'is_bookmarked_by_current_user_annotated': Case(
+                'is_bookmarked_by_current_user': Case(
                     When(bookmarks__user=user, then=Value(True)), 
                     default=Value(False),
                     output_field=BooleanField()
@@ -147,129 +146,100 @@ class NoteViewSet(viewsets.ModelViewSet):
         }
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
-    @method_decorator(never_cache)
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], url_path='download')
     def download(self, request, pk=None):
+        """
+        Increments download count and serves the file for download.
+        """
+        try:
+            note = self.get_object()
+            
+            # Increment download count atomically
+            note.download_count = F('download_count') + 1
+            note.save(update_fields=['download_count'])
+            note.refresh_from_db() # Get the latest count from the DB
+
+            if not note.file:
+                logger.warning(f"Note {pk} has no file associated.")
+                raise Http404("File not found for this note.")
+            
+            file_path = note.file.path
+            if not os.path.exists(file_path):
+                logger.error(f"File for note {pk} does not exist on disk at: {file_path}")
+                raise Http404("File does not exist on the server.")
+            
+            file_name = os.path.basename(file_path)
+            mime_type, _ = mimetypes.guess_type(file_path)
+            
+            response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename=file_name)
+            if mime_type:
+                response['Content-Type'] = mime_type
+            
+            # Add custom header with the new download count
+            response['X-Download-Count'] = note.download_count
+            return response
+            
+        except Http404 as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error serving file for note {pk}: {e}", exc_info=True)
+            return Response({"detail": "An internal server error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # --- FIX: Updated Like Logic ---
+    @action(detail=True, methods=['post'], url_path='toggle-like')
+    def toggle_like(self, request, pk=None):
         note = self.get_object()
+        user = request.user
         
-        # নিরাপদ ডাউনলোড ভিউ-এর জন্য একটি সম্পূর্ণ URL তৈরি করুন
-        # 'download_note_file' নামটি urls.py থেকে আসছে
-        secure_download_url = reverse('secure-note-download', kwargs={'pk': note.pk}, request=request)
+        try:
+            like_instance = Like.objects.get(user=user, note=note)
+            like_instance.delete()
+            liked = False
+            message = "Note unliked successfully."
+        except Like.DoesNotExist:
+            Like.objects.create(user=user, note=note)
+            liked = True
+            message = "Note liked successfully."
+
+        # FIX: রিলেশনশিপ ক্যাশ আপডেট করার জন্য নোট অবজেক্টটি রিফ্রেশ করুন
+        note.refresh_from_db()
         
+        # এখন কাউন্ট করলে সঠিক সংখ্যা পাওয়া যাবে
+        likes_count = note.likes.count()
+
         return Response({
-            "detail": "Please use the secure_download_url to download the file.",
-            "secure_download_url": secure_download_url
+            "message": message,
+            "liked": liked,
+            "likes_count": likes_count
         }, status=status.HTTP_200_OK)
 
-
-    @action(detail=True, methods=['post'])
-    def toggle_like(self, request, pk=None):
-        try:
-            note = self.get_object()
-            user = request.user
-
-            like_instance = Like.objects.filter(user=user, note=note).first()
-
-            if like_instance:
-                like_instance.delete()
-                liked = False
-                message = "Note unliked successfully."
-            else:
-                Like.objects.create(user=user, note=note)
-                liked = True
-                message = "Note liked successfully."
-
-            likes_count = note.likes.count()
-
-            return Response({
-                "message": message,
-                "liked": liked,
-                "likes_count": likes_count
-            }, status=status.HTTP_200_OK)
-
-        except Note.DoesNotExist:
-            return Response(
-                {"detail": "Note not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            logger.error(f"Error toggling like for note {pk} by {user.username}: {e}", exc_info=True)
-            return Response(
-                {"detail": f"An error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-    @action(detail=True, methods=['post'])
+    # --- FIX: Updated Bookmark Logic ---
+    @action(detail=True, methods=['post'], url_path='toggle-bookmark')
     def toggle_bookmark(self, request, pk=None):
-        if not request.user.is_authenticated:
-            logger.warning(f"Bookmark toggle request failed: User not authenticated.")
-            return Response(
-                {"detail": "Authentication credentials were not provided."},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
+        note = self.get_object()
         user = request.user
-        note = None
-        try:
-            note = self.get_object()
-            logger.info(f"Successfully retrieved note: '{note.title}' (ID: {note.id})")
-
-        except Note.DoesNotExist:
-            logger.warning(f"Bookmark toggle request failed: Note with ID {pk} not found.")
-            return Response(
-                {"detail": "Note not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Note.MultipleObjectsReturned:
-            logger.error(f"Multiple notes found for PK {pk}. This should not happen with a unique primary key.", exc_info=True)
-            return Response(
-                {"detail": "Internal server error: Found multiple notes with the same ID."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        except Exception as e:
-            logger.error(f"Unexpected error fetching note {pk}: {e}", exc_info=True)
-            return Response(
-                {"detail": "An error occurred while fetching the note."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
         try:
-            bookmark_instance = Bookmark.objects.filter(user=user, note=note).first()
+            bookmark_instance = Bookmark.objects.get(user=user, note=note)
+            bookmark_instance.delete()
+            bookmarked = False
+            message = "Note removed from bookmarks."
+        except Bookmark.DoesNotExist:
+            Bookmark.objects.create(user=user, note=note)
+            bookmarked = True
+            message = "Note bookmarked successfully."
 
-            if bookmark_instance:
-                logger.info(f"User {user.username} unbookmarking note {note.id}")
-                bookmark_instance.delete()
-                bookmarked = False
-                message = "Note removed from bookmarks."
-            else:
-                logger.info(f"User {user.username} bookmarking note {note.id}")
-                Bookmark.objects.create(user=user, note=note)
-                bookmarked = True
-                message = "Note bookmarked successfully."
+        # FIX: রিলেশনশিপ ক্যাশ আপডেট করার জন্য নোট অবজেক্টটি রিফ্রেশ করুন
+        note.refresh_from_db()
 
-            bookmarks_count = note.bookmarks.count()
-            logger.info(f"Bookmark toggle successful for note {note.id}. New count: {bookmarks_count}")
+        # এখন কাউন্ট করলে সঠিক সংখ্যা পাওয়া যাবে
+        bookmarks_count = note.bookmarks.count()
 
-            return Response({
-                "message": message,
-                "bookmarked": bookmarked,
-                "bookmarks_count": bookmarks_count
-            }, status=status.HTTP_200_OK)
-
-        except IntegrityError as ie:
-            logger.error(f"IntegrityError during bookmark toggle for note {pk} by {user.username}: {ie}", exc_info=True)
-            return Response(
-                {"detail": "You might have already bookmarked this note or there's a data integrity issue."},
-                status=status.HTTP_400_BAD_REQUEST 
-            )
-        except Exception as e:
-            logger.error(f"Error toggling bookmark for note {pk} by {user.username}: {e}", exc_info=True)
-            return Response(
-                {"detail": f"An error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
+        return Response({
+            "message": message,
+            "bookmarked": bookmarked,
+            "bookmarks_count": bookmarks_count
+        }, status=status.HTTP_200_OK)
 
 
     @action(detail=False, methods=['get'], url_path='my-notes')
