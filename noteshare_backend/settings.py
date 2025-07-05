@@ -71,11 +71,13 @@ WSGI_APPLICATION = 'noteshare_backend.wsgi.application'
 AUTH_USER_MODEL = 'users.User'
 
 
-# --- Database ---
 DATABASES = {
-    'default': dj_database_url.parse(config('DATABASE_URL'))
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL'),  
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
-
 
 # --- Security and Hosting ---
 RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default=None)
