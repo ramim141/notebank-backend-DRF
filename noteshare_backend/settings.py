@@ -76,11 +76,11 @@ DATABASES = {
         default=config('DATABASE_URL'),  
         conn_max_age=600,
         ssl_require=True,
-        options={
-            'sslmode': 'require',
-            'connect_timeout': 10,
-            'application_name': 'noteshare_backend',
-        }
+        # options={
+        #     'sslmode': 'require',
+        #     'connect_timeout': 10,
+        #     'application_name': 'noteshare_backend',
+        # }
     )
 }
 
