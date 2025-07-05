@@ -66,7 +66,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         'department__name',
         'faculty__name',
     ]
-    ordering_fields = ['created_at', 'download_count', 'average_rating', 'title']
+    ordering_fields = ['created_at', 'download_count', 'average_rating', 'title', 'likes_count', 'bookmarks_count']
     
     def get_permissions(self):
         # FIX: Added 'download' to IsAuthenticated permission check
@@ -87,15 +87,13 @@ class NoteViewSet(viewsets.ModelViewSet):
         queryset = queryset.select_related('uploader', 'department', 'course', 'category', 'faculty').prefetch_related(
             'star_ratings',
             'comments',
-            # 'likes',
-            # 'bookmarks'
         )
 
-    
+        # --- সমাধান: Annotation কী-গুলো Serializer-এর `source`-এর সাথে মেলানো হয়েছে ---
         base_annotations = {
             'calculated_average_rating': Coalesce(Avg('star_ratings__stars'), Value(0.0)),
-            'likes_count': Count('likes', distinct=True),
-            'bookmarks_count': Count('bookmarks', distinct=True),
+            'calculated_likes_count': Count('likes', distinct=True),
+            'calculated_bookmarks_count': Count('bookmarks', distinct=True),
         }
         queryset = queryset.annotate(**base_annotations)
 
@@ -108,7 +106,6 @@ class NoteViewSet(viewsets.ModelViewSet):
                 is_bookmarked_by_current_user_annotated=Exists(bookmarks_subquery)
             )
         else:
-            # লগইন না করা ব্যবহারকারীদের জন্য ডিফল্ট মান
             queryset = queryset.annotate(
                 is_liked_by_current_user_annotated=Value(False, output_field=BooleanField()),
                 is_bookmarked_by_current_user_annotated=Value(False, output_field=BooleanField())
@@ -118,7 +115,6 @@ class NoteViewSet(viewsets.ModelViewSet):
             if not user.is_authenticated or not user.is_staff:
                 queryset = queryset.filter(is_approved=True)
 
-        # পেজিনেশনের জন্য ইউনিক এবং স্থিতিশীল অর্ডারিং
         return queryset.order_by('-created_at', '-id')
 
     def get_serializer_context(self):

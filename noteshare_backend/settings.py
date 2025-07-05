@@ -75,8 +75,24 @@ DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL'),  
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=True,
+        options={
+            'sslmode': 'require',
+            'connect_timeout': 10,
+            'application_name': 'noteshare_backend',
+        }
     )
+}
+
+# Database connection optimization
+DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes
+DATABASES['default']['OPTIONS'] = {
+    'sslmode': 'require',
+    'connect_timeout': 10,
+    'application_name': 'noteshare_backend',
+    'keepalives_idle': 30,
+    'keepalives_interval': 10,
+    'keepalives_count': 5,
 }
 
 # --- Security and Hosting ---
