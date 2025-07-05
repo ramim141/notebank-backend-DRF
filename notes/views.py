@@ -13,6 +13,7 @@ from django.views.decorators.cache import never_cache
 from django.utils.decorators import method_decorator
 import mimetypes
 from rest_framework.reverse import reverse
+from django.db.models import Exists, OuterRef
 
 from .models import Note, StarRating, Comment, Like, Bookmark, Department, Course, NoteCategory, NoteRequest, Faculty, Contributor
 from .serializers import NoteSerializer, StarRatingSerializer, CommentSerializer, LikeSerializer, BookmarkSerializer, DepartmentSerializer, CourseSerializer, NoteCategorySerializer, NoteRequestSerializer,  FacultySerializer, ContributorSerializer
@@ -83,8 +84,8 @@ class NoteViewSet(viewsets.ModelViewSet):
         queryset = queryset.select_related('uploader', 'department', 'course', 'category', 'faculty').prefetch_related(
             'star_ratings',
             'comments',
-            'likes',
-            'bookmarks'
+            # 'likes',
+            # 'bookmarks'
         )
 
     
@@ -93,37 +94,29 @@ class NoteViewSet(viewsets.ModelViewSet):
             'likes_count': Count('likes', distinct=True),
             'bookmarks_count': Count('bookmarks', distinct=True),
         }
+        queryset = queryset.annotate(**base_annotations)
 
         if user.is_authenticated:
-            user_specific_annotations = {
-                'is_liked_by_current_user': Case(
-                    When(likes__user=user, then=Value(True)), 
-                    default=Value(False),
-                    output_field=BooleanField()
-                ),
-                'is_bookmarked_by_current_user': Case(
-                    When(bookmarks__user=user, then=Value(True)), 
-                    default=Value(False),
-                    output_field=BooleanField()
-                )
-            }
-        else:
+            likes_subquery = Like.objects.filter(note=OuterRef('pk'), user=user)
+            bookmarks_subquery = Bookmark.objects.filter(note=OuterRef('pk'), user=user)
             
-            user_specific_annotations = {
-                'is_liked_by_current_user_annotated': Value(False, output_field=BooleanField()),
-                'is_bookmarked_by_current_user_annotated': Value(False, output_field=BooleanField())
-            }
+            queryset = queryset.annotate(
+                is_liked_by_current_user_annotated=Exists(likes_subquery),
+                is_bookmarked_by_current_user_annotated=Exists(bookmarks_subquery)
+            )
+        else:
+            # লগইন না করা ব্যবহারকারীদের জন্য ডিফল্ট মান
+            queryset = queryset.annotate(
+                is_liked_by_current_user_annotated=Value(False, output_field=BooleanField()),
+                is_bookmarked_by_current_user_annotated=Value(False, output_field=BooleanField())
+            )
 
-        queryset = queryset.annotate(**base_annotations, **user_specific_annotations)
-
-
-       
         if self.action in ['list', 'retrieve']:
             if not user.is_authenticated or not user.is_staff:
                 queryset = queryset.filter(is_approved=True)
 
-        return queryset.order_by('-created_at')
-
+        # পেজিনেশনের জন্য ইউনিক এবং স্থিতিশীল অর্ডারিং
+        return queryset.order_by('-created_at', '-id')
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
