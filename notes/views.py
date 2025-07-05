@@ -191,17 +191,19 @@ class NoteViewSet(viewsets.ModelViewSet):
         note = self.get_object()
         user = request.user
         
-        try:
-            like_instance = Like.objects.get(user=user, note=note)
+        like_instance = Like.objects.filter(user=user, note=note)
+
+        if like_instance.exists():
             like_instance.delete()
             liked = False
             message = "Note unliked successfully."
-        except Like.DoesNotExist:
+        else:
             Like.objects.create(user=user, note=note)
             liked = True
             message = "Note liked successfully."
-
-        # FIX: রিলেশনশিপ ক্যাশ আপডেট করার জন্য নোট অবজেক্টটি রিফ্রেশ করুন
+        
+        # --- সমাধান: এই লাইনটি যোগ করুন ---
+        # ডেটাবেস থেকে নোটের সর্বশেষ অবস্থা লোড করুন
         note.refresh_from_db()
         
         # এখন কাউন্ট করলে সঠিক সংখ্যা পাওয়া যাবে
@@ -213,26 +215,27 @@ class NoteViewSet(viewsets.ModelViewSet):
             "likes_count": likes_count
         }, status=status.HTTP_200_OK)
 
+
     # --- FIX: Updated Bookmark Logic ---
     @action(detail=True, methods=['post'], url_path='toggle-bookmark')
     def toggle_bookmark(self, request, pk=None):
         note = self.get_object()
         user = request.user
 
-        try:
-            bookmark_instance = Bookmark.objects.get(user=user, note=note)
+        bookmark_instance = Bookmark.objects.filter(user=user, note=note)
+
+        if bookmark_instance.exists():
             bookmark_instance.delete()
             bookmarked = False
             message = "Note removed from bookmarks."
-        except Bookmark.DoesNotExist:
+        else:
             Bookmark.objects.create(user=user, note=note)
             bookmarked = True
             message = "Note bookmarked successfully."
 
-        # FIX: রিলেশনশিপ ক্যাশ আপডেট করার জন্য নোট অবজেক্টটি রিফ্রেশ করুন
+        # --- সমাধান: এই লাইনটি যোগ করুন ---
         note.refresh_from_db()
 
-        # এখন কাউন্ট করলে সঠিক সংখ্যা পাওয়া যাবে
         bookmarks_count = note.bookmarks.count()
 
         return Response({
@@ -240,7 +243,6 @@ class NoteViewSet(viewsets.ModelViewSet):
             "bookmarked": bookmarked,
             "bookmarks_count": bookmarks_count
         }, status=status.HTTP_200_OK)
-
 
     @action(detail=False, methods=['get'], url_path='my-notes')
     def my_uploaded_notes(self, request):

@@ -14,7 +14,7 @@ router.register(r'departments', DepartmentViewSet, basename='department')
 router.register(r'courses', CourseViewSet, basename='course') 
 router.register(r'star-ratings', StarRatingViewSet, basename='star-rating')
 router.register(r'comments', CommentViewSet, basename='comment')
-router.register(r'', NoteViewSet, basename='note') 
+router.register(r'notes', NoteViewSet, basename='note')
 
 urlpatterns = [
     path('note-requests/', NoteRequestListCreateView.as_view(), name='note-request-list-create'),
