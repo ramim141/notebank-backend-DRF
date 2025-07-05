@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from .models import Note, StarRating, Comment, Like, Bookmark , Department, Course, NoteCategory, NoteRequest,Faculty,Contributor
 from taggit.serializers import (TagListSerializerField, TaggitSerializer)
-
+import os
 
 User = get_user_model()
 
@@ -119,6 +119,7 @@ class NoteSerializer(serializers.ModelSerializer):
     uploader_first_name = serializers.CharField(source='uploader.first_name', read_only=True, allow_null=True)
     uploader_last_name = serializers.CharField(source='uploader.last_name', read_only=True, allow_null=True)
     file_url = serializers.SerializerMethodField()
+    file_name = serializers.SerializerMethodField()
     tags = TagListSerializerField(required=False)
     department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), required=False, allow_null=True)
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=False, allow_null=True)
@@ -152,6 +153,7 @@ class NoteSerializer(serializers.ModelSerializer):
             'description',
             'file_url',
             'file',
+            'file_name',
             'faculty',     
             'faculty_name', 
             'course',
@@ -183,6 +185,7 @@ class NoteSerializer(serializers.ModelSerializer):
             'comments',     
             'updated_at',
             'file_url',
+            'file_name',
             'likes_count',
             'is_liked_by_current_user',
             'bookmarks_count',
@@ -206,6 +209,11 @@ class NoteSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if obj.file and hasattr(obj.file, 'url') and request:
             return reverse('secure-note-download', kwargs={'pk': obj.pk}, request=request)
+        return None
+    
+    def get_file_name(self, obj):
+        if obj.file and hasattr(obj.file, 'name'):
+            return os.path.basename(obj.file.name)
         return None
 
     def get_likes_count(self, obj):
