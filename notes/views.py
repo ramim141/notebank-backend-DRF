@@ -142,42 +142,43 @@ class NoteViewSet(viewsets.ModelViewSet):
     def download(self, request, pk=None):
         """
         Increments download count and serves the file for download.
+        This version is more robust for cloud environments.
         """
         try:
             note = self.get_object()
             
-            # Increment download count atomically
-            note.download_count = F('download_count') + 1
-            note.save(update_fields=['download_count'])
-            note.refresh_from_db() # Get the latest count from the DB
-
+            
             if not note.file:
                 logger.warning(f"Note {pk} has no file associated.")
                 raise Http404("File not found for this note.")
+
+            # Atomically increment download count
+            note.download_count = F('download_count') + 1
+            note.save(update_fields=['download_count'])
+            note.refresh_from_db()
+
             
-            file_path = note.file.path
-            if not os.path.exists(file_path):
-                logger.error(f"File for note {pk} does not exist on disk at: {file_path}")
-                raise Http404("File does not exist on the server.")
+            file_name = os.path.basename(note.file.name)
+            mime_type, _ = mimetypes.guess_type(file_name)
             
-            file_name = os.path.basename(file_path)
-            mime_type, _ = mimetypes.guess_type(file_path)
+            # Use the file object's open method, which works with any storage backend
+            response = FileResponse(note.file.open('rb'), as_attachment=True, filename=file_name)
             
-            response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename=file_name)
             if mime_type:
                 response['Content-Type'] = mime_type
             
-            # Add custom header with the new download count
+            
             response['X-Download-Count'] = note.download_count
             return response
             
         except Http404 as e:
+            logger.warning(f"Download request failed for note {pk}: {e}")
             return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error serving file for note {pk}: {e}", exc_info=True)
-            return Response({"detail": "An internal server error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": "An internal server error occurred while serving the file."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # --- FIX: Updated Like Logic ---
+
     @action(detail=True, methods=['post'], url_path='toggle-like')
     def toggle_like(self, request, pk=None):
         note = self.get_object()
@@ -193,12 +194,9 @@ class NoteViewSet(viewsets.ModelViewSet):
             Like.objects.create(user=user, note=note)
             liked = True
             message = "Note liked successfully."
-        
-        # --- সমাধান: এই লাইনটি যোগ করুন ---
-        # ডেটাবেস থেকে নোটের সর্বশেষ অবস্থা লোড করুন
+
         note.refresh_from_db()
         
-        # এখন কাউন্ট করলে সঠিক সংখ্যা পাওয়া যাবে
         likes_count = note.likes.count()
 
         return Response({
@@ -208,7 +206,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
 
-    # --- FIX: Updated Bookmark Logic ---
+
     @action(detail=True, methods=['post'], url_path='toggle-bookmark')
     def toggle_bookmark(self, request, pk=None):
         note = self.get_object()
@@ -225,7 +223,7 @@ class NoteViewSet(viewsets.ModelViewSet):
             bookmarked = True
             message = "Note bookmarked successfully."
 
-        # --- সমাধান: এই লাইনটি যোগ করুন ---
+
         note.refresh_from_db()
 
         bookmarks_count = note.bookmarks.count()

@@ -160,7 +160,7 @@ class Comment(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = ('note', 'user')
+        # unique_together = ('note', 'user')
 
     def __str__(self):
         return f"Comment by {self.user.username} on '{self.note.title}': {self.text[:50]}..."

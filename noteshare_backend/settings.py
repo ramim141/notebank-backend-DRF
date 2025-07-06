@@ -41,7 +41,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # This should be high up, especially before CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -71,29 +71,35 @@ WSGI_APPLICATION = 'noteshare_backend.wsgi.application'
 AUTH_USER_MODEL = 'users.User'
 
 
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=config('DATABASE_URL'),  
+#         conn_max_age=600,
+#         ssl_require=True,
+#         # options={
+#         #     'sslmode': 'require',
+#         #     'connect_timeout': 10,
+#         #     'application_name': 'noteshare_backend',
+#         # }
+#     )
+# }
 DATABASES = {
-    'default': dj_database_url.config(
-        default=config('DATABASE_URL'),  
-        conn_max_age=600,
-        ssl_require=True,
-        # options={
-        #     'sslmode': 'require',
-        #     'connect_timeout': 10,
-        #     'application_name': 'noteshare_backend',
-        # }
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 # Database connection optimization
-DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes
-DATABASES['default']['OPTIONS'] = {
-    'sslmode': 'require',
-    'connect_timeout': 10,
-    'application_name': 'noteshare_backend',
-    'keepalives_idle': 30,
-    'keepalives_interval': 10,
-    'keepalives_count': 5,
-}
+# DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes
+# DATABASES['default']['OPTIONS'] = {
+#     'sslmode': 'require',
+#     'connect_timeout': 10,
+#     'application_name': 'noteshare_backend',
+#     'keepalives_idle': 30,
+#     'keepalives_interval': 10,
+#     'keepalives_count': 5,
+# }
 
 # --- Security and Hosting ---
 RENDER_EXTERNAL_HOSTNAME = config('RENDER_EXTERNAL_HOSTNAME', default=None)

@@ -79,9 +79,9 @@ class StarRatingSerializer(serializers.ModelSerializer):
             'updated_at',
             'note'
         )
-        read_only_fields = ('user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
+        read_only_fields = ('user', 'user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
         extra_kwargs = {
-            'user': {'write_only': True, 'required': False},
+            # 'user': {'write_only': True, 'required': False},
             'note': {'write_only': True, 'required': True}
         }
 
@@ -105,9 +105,9 @@ class CommentSerializer(serializers.ModelSerializer):
             'updated_at',
             'note'
         )
-        read_only_fields = ('user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
+        read_only_fields = ('user', 'user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
         extra_kwargs = {
-            'user': {'write_only': True, 'required': False},
+            # 'user': {'write_only': True, 'required': False},
             'note': {'write_only': True, 'required': True}
         }
 
