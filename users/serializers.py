@@ -170,6 +170,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     
     def update(self, instance, validated_data):
+        print("DEBUG: validated_data received for update:", validated_data)
         # Department আপডেট
         department = validated_data.pop('department', None)
         if department is not None:

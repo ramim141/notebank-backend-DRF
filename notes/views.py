@@ -72,7 +72,7 @@ class NoteViewSet(viewsets.ModelViewSet):
         # FIX: Added 'download' to IsAuthenticated permission check
         if self.action in ['list', 'retrieve']:
             permission_classes = [permissions.AllowAny] 
-        elif self.action in ['create', 'download', 'toggle_like', 'toggle_bookmark', 'my_uploaded_notes']:
+        elif self.action in ['create', 'download', 'toggle_like', 'toggle_bookmark', 'my_uploaded_notes', 'get_content']:
             permission_classes = [permissions.IsAuthenticated]
         elif self.action == 'destroy':
             permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
@@ -233,6 +233,100 @@ class NoteViewSet(viewsets.ModelViewSet):
             "bookmarked": bookmarked,
             "bookmarks_count": bookmarks_count
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='content')
+    def get_content(self, request, pk=None):
+        """
+        Extract and return text content from the note file.
+        Supports various file types including DOC, DOCX, PDF, TXT, etc.
+        """
+        logger.info(f"Content endpoint called for note {pk} by user {request.user.username}")
+        try:
+            note = self.get_object()
+            
+            if not note.file:
+                logger.warning(f"Note {pk} has no file associated.")
+                raise Http404("File not found for this note.")
+
+            file_path = note.file.path
+            if not os.path.exists(file_path):
+                logger.error(f"File for note {pk} does not exist on disk at: {file_path}")
+                raise Http404("File not found.")
+
+            file_name = os.path.basename(file_path)
+            file_extension = os.path.splitext(file_name)[1].lower()
+
+            # Handle different file types
+            if file_extension in ['.txt', '.md', '.json', '.xml', '.csv', '.log', '.ini', '.conf', '.cfg']:
+                # Text files - read directly
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except UnicodeDecodeError:
+                    # Try with different encoding
+                    with open(file_path, 'r', encoding='latin-1') as f:
+                        content = f.read()
+                
+                return Response({
+                    "content": content,
+                    "file_type": "text",
+                    "file_name": file_name
+                })
+
+            elif file_extension in ['.js', '.jsx', '.ts', '.tsx', '.html', '.css', '.scss', '.sass', '.less', '.php', '.py', '.java', '.cpp', '.c', '.cs', '.rb', '.go', '.rs', '.swift', '.kt', '.dart', '.r', '.sql', '.sh', '.bat', '.ps1', '.yaml', '.yml', '.toml', '.env']:
+                # Code files - read as text
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except UnicodeDecodeError:
+                    with open(file_path, 'r', encoding='latin-1') as f:
+                        content = f.read()
+                
+                return Response({
+                    "content": content,
+                    "file_type": "code",
+                    "file_name": file_name
+                })
+
+            elif file_extension in ['.doc', '.docx']:
+                # For DOC/DOCX files, return a message indicating external processing is needed
+                # In a production environment, you would use libraries like python-docx or mammoth
+                response_data = {
+                    "content": "This is a Microsoft Word document. Text extraction requires additional processing. Please download the file to view its contents.",
+                    "file_type": "document",
+                    "file_name": file_name,
+                    "requires_processing": True
+                }
+                logger.info(f"Returning response for {file_extension} file: {response_data}")
+                return Response(response_data)
+
+            elif file_extension == '.pdf':
+                # For PDF files, return a message indicating external processing is needed
+                # In a production environment, you would use libraries like PyPDF2 or pdfplumber
+                return Response({
+                    "content": "This is a PDF document. Text extraction requires additional processing. Please download the file to view its contents.",
+                    "file_type": "pdf",
+                    "file_name": file_name,
+                    "requires_processing": True
+                })
+
+            else:
+                # For other file types, return a generic message
+                response_data = {
+                    "content": f"This is a {file_extension.upper()} file. Text content extraction is not supported for this file type. Please download the file to view its contents.",
+                    "file_type": "other",
+                    "file_name": file_name,
+                    "requires_processing": True
+                }
+                logger.info(f"Returning response for {file_extension} file: {response_data}")
+                return Response(response_data)
+
+        except Http404 as e:
+            logger.warning(f"Content request failed for note {pk}: {e}")
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error extracting content for note {pk}: {e}", exc_info=True)
+            return Response({"detail": "An internal server error occurred while extracting content."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='my-notes')
     def my_uploaded_notes(self, request):

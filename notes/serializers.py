@@ -91,6 +91,8 @@ class CommentSerializer(serializers.ModelSerializer):
     user_student_id = serializers.CharField(source='user.student_id', read_only=True, allow_null=True)
     user_first_name = serializers.CharField(source='user.first_name', read_only=True, allow_null=True)
     user_last_name = serializers.CharField(source='user.last_name', read_only=True, allow_null=True)
+    is_owner = serializers.SerializerMethodField()
+
     class Meta:
         model = Comment 
         fields = (
@@ -103,13 +105,18 @@ class CommentSerializer(serializers.ModelSerializer):
             'text', 
             'created_at',
             'updated_at',
-            'note'
+            'note',
+            'is_owner',
         )
         read_only_fields = ('user', 'user_username', 'user_first_name', 'user_last_name', 'user_student_id', 'created_at', 'updated_at')
         extra_kwargs = {
             # 'user': {'write_only': True, 'required': False},
             'note': {'write_only': True, 'required': True}
         }
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        return request and request.user.is_authenticated and obj.user == request.user
 
 
 class NoteSerializer(serializers.ModelSerializer):
@@ -133,12 +140,13 @@ class NoteSerializer(serializers.ModelSerializer):
     star_ratings = StarRatingSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     
+    
     average_rating = serializers.FloatField(source='calculated_average_rating', read_only=True)
     likes_count = serializers.IntegerField(source='calculated_likes_count', read_only=True)
     is_liked_by_current_user = serializers.BooleanField(source='is_liked_by_current_user_annotated', read_only=True)
     bookmarks_count = serializers.IntegerField(source='calculated_bookmarks_count', read_only=True)
     is_bookmarked_by_current_user = serializers.BooleanField(source='is_bookmarked_by_current_user_annotated', read_only=True)
-
+    # total_ratings = serializers.IntegerField(source='calculated_total_ratings', read_only=True)
     class Meta:
         model = Note
         fields = (
@@ -171,6 +179,7 @@ class NoteSerializer(serializers.ModelSerializer):
             'is_liked_by_current_user',
             'bookmarks_count',
             'is_bookmarked_by_current_user',
+            # 'total_ratings',
             'star_ratings', 
             'comments',    
             'created_at',
@@ -182,6 +191,7 @@ class NoteSerializer(serializers.ModelSerializer):
             'uploader_department',
             'download_count',
             'star_ratings', 
+            # 'total_ratings',
             'comments',     
             'updated_at',
             'file_url',
