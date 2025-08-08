@@ -13,8 +13,10 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False
+
 # --- Application Definition ---
 INSTALLED_APPS = [
+    # 'daphne',  # Optional; required if you run with the daphne server explicitly
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -22,7 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
-    
+    'channels',  # Enable WebSockets via Django Channels
     # Third-party apps
     'rest_framework',
     'django_filters',
@@ -68,8 +70,15 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'noteshare_backend.wsgi.application'
+ASGI_APPLICATION = 'noteshare_backend.asgi.application'  # Enable ASGI for Channels
 AUTH_USER_MODEL = 'users.User'
 
+# Local dev: In-memory channel layer (no Redis required)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 # DATABASES = {
 #     'default': dj_database_url.config(
@@ -112,7 +121,7 @@ FRONTEND_URL = 'http://localhost:5173'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://edumetro.onrender.com", # Your production frontend URL
+    "https://edumetro.onrender.com", 
 ]
 
 CSRF_TRUSTED_ORIGINS = [

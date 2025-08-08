@@ -29,6 +29,7 @@ from .serializers import UserSerializer
 from django.db.models import Count, Sum
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import CustomTokenObtainPairSerializer
+from urllib.parse import unquote
 User = get_user_model()
 
 class UserRegistrationView(generics.CreateAPIView):
@@ -251,21 +252,59 @@ class PasswordResetConfirmView(generics.GenericAPIView):
     serializer_class = PasswordResetConfirmSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get(self, request, uidb64, token, *args, **kwargs):
+        """Handle GET requests to validate the reset link before showing the form"""
+        # Decode URL-encoded parameters
+        decoded_uidb64 = unquote(uidb64)
+        decoded_token = unquote(token)
+        
+        print(f"DEBUG: GET request for password reset with uidb64={decoded_uidb64}, token={decoded_token}")
+        
+        try:
+            uid = force_str(urlsafe_base64_decode(decoded_uidb64))
+            print(f"DEBUG: Decoded uid={uid}")
+            user = User.objects.get(pk=uid)
+            print(f"DEBUG: Found user={user.username}")
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
+            print(f"DEBUG: Error decoding uidb64 or finding user: {e}")
+            return Response({"detail": "Invalid reset link."}, status=status.HTTP_400_BAD_REQUEST)
+
+        token_generator = PasswordResetTokenGenerator()
+        token_valid = token_generator.check_token(user, decoded_token)
+        print(f"DEBUG: Token valid={token_valid}")
+        
+        if token_valid:
+            return Response({"detail": "Reset link is valid. Please proceed with password reset."}, status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "The reset link was invalid or has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+
     def post(self, request, uidb64, token, *args, **kwargs):
+        # Decode URL-encoded parameters
+        decoded_uidb64 = unquote(uidb64)
+        decoded_token = unquote(token)
+        
+        print(f"DEBUG: Password reset confirm called with uidb64={decoded_uidb64}, token={decoded_token}")
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         new_password = serializer.validated_data['new_password1']
 
         try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
+            uid = force_str(urlsafe_base64_decode(decoded_uidb64))
+            print(f"DEBUG: Decoded uid={uid}")
             user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            print(f"DEBUG: Found user={user.username}")
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist) as e:
+            print(f"DEBUG: Error decoding uidb64 or finding user: {e}")
             user = None
 
         token_generator = PasswordResetTokenGenerator()
-        if user is not None and token_generator.check_token(user, token):
-      
+        token_valid = token_generator.check_token(user, decoded_token) if user else False
+        print(f"DEBUG: Token valid={token_valid}")
+        
+        if user is not None and token_valid:
+            print(f"DEBUG: Setting new password for user {user.username}")
             user.set_password(new_password)
             user.save()
             return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
@@ -394,11 +433,9 @@ class DashboardDataView(APIView):
     def get(self, request, *args, **kwargs):
         user = request.user
 
-        # 1. User Profile & Personal Stats (এখন UserSerializer থেকেই সব আসছে)
         user_serializer = UserSerializer(user, context={'request': request})
         user_data_with_stats = user_serializer.data
 
-        # এখন stats_data অবজেক্টটি UserSerializer থেকে আসা ডেটা দিয়ে তৈরি হবে
         stats_data = {
             'uploads': user_data_with_stats.get('total_notes_uploaded', 0),
             'downloads': user_data_with_stats.get('total_notes_downloaded', 0),
@@ -406,20 +443,16 @@ class DashboardDataView(APIView):
             'avgRating': user_data_with_stats.get('average_rating_of_all_notes', 0.0),
         }
 
-        # 2. Recent Notes (অপরিবর্তিত)
         recent_notes_qs = Note.objects.filter(
             uploader=user
         ).order_by('-created_at')[:5]
         recent_notes_data = NoteSerializer(recent_notes_qs, many=True, context={'request': request}).data
 
-        # 3. Recent Bookmarks (অপরিবর্তিত)
         bookmarked_notes_qs = Note.objects.filter(
             bookmarks__user=user,
             is_approved=True
         ).order_by('-bookmarks__created_at')[:5]
         recent_bookmarks_data = NoteSerializer(bookmarked_notes_qs, many=True, context={'request': request}).data
-
-        # 4. Category Distribution for Pie Chart (অপরিবর্তিত)
         category_distribution = Note.objects.filter(uploader=user) \
                                         .values('category__name') \
                                         .annotate(value=Count('id')) \

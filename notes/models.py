@@ -2,7 +2,8 @@ from django.db import models
 from django.conf import settings 
 from django.core.validators import MinValueValidator, MaxValueValidator 
 from taggit.managers import TaggableManager
-
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 
 def note_file_path(instance, filename):
@@ -216,29 +217,43 @@ class NoteRequest(models.Model):
     
     class RequestStatus(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
-        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
         FULFILLED = 'FULFILLED', 'Fulfilled'
         REJECTED = 'REJECTED', 'Rejected'
 
-    # কোন ব্যবহারকারী অনুরোধ করেছেন, তার জন্য ForeignKey
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='note_requests'
+        related_name='note_requests',
+        help_text="The user who requested the note."
     )
-    # ফর্ম থেকে পাওয়া ডেটা
+
     course_name = models.CharField(max_length=255)
     department_name = models.CharField(max_length=255)
     message = models.TextField(help_text="Detailed description of the needed note.")
 
-    # অনুরোধের বর্তমান অবস্থা ট্র্যাক করার জন্য
     status = models.CharField(
         max_length=20,
         choices=RequestStatus.choices,
         default=RequestStatus.PENDING
     )
+    fulfilled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='fulfilled_requests',
+        help_text="The user who fulfilled this request."
+    )
+    fulfilled_note = models.OneToOneField(
+        'Note',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='fulfilled_request',
+        help_text="The note that was uploaded to fulfill this request."
+    )
     
-    # কখন অনুরোধ করা হয়েছে
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -249,3 +264,31 @@ class NoteRequest(models.Model):
         ordering = ['-created_at']
         verbose_name = "Note Request"
         verbose_name_plural = "Note Requests"
+
+
+
+class Notification(models.Model):
+    actor_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name='actor_notifications')
+    actor_object_id = models.PositiveIntegerField()
+    actor = GenericForeignKey('actor_content_type', 'actor_object_id')
+    verb = models.CharField(max_length=255)
+    target_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, related_name='target_notifications')
+    target_object_id = models.PositiveIntegerField(null=True, blank=True)
+    target = GenericForeignKey('target_content_type', 'target_object_id')
+    
+    timestamp = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        if self.target:
+            return f'{self.actor} {self.verb} {self.target}'
+        return f'{self.actor} {self.verb}'
+
+class UserNotificationStatus(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE)
+    is_read = models.BooleanField(default=False)
+    
+    class Meta:
+        unique_together = ('user', 'notification')

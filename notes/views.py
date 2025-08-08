@@ -439,15 +439,91 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user, note=note_instance)
 
 
-class NoteRequestListCreateView(generics.ListCreateAPIView):
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def test_note_request_create(request):
+    """Test endpoint for creating note requests"""
+    print(f"DEBUG: test_note_request_create called with method: {request.method}")
+    print(f"DEBUG: Request data: {request.data}")
+    print(f"DEBUG: User: {request.user}")
+    
+    serializer = NoteRequestSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class MyNoteRequestsView(generics.ListCreateAPIView):
     serializer_class = NoteRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return NoteRequest.objects.filter(user=self.request.user)
-
+    
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        print(f"DEBUG: MyNoteRequestsView.create called with method: {request.method}")
+        print(f"DEBUG: Request data: {request.data}")
+        print(f"DEBUG: User: {request.user}")
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except serializers.ValidationError as ve:
+            print(f"DEBUG: Validation error: {ve.detail}")
+            return Response(ve.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"DEBUG: Unexpected error creating note request: {e}")
+            return Response({"detail": "Internal server error while creating note request."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def post(self, request, *args, **kwargs):
+        print(f"DEBUG: MyNoteRequestsView.post called")
+        return super().post(request, *args, **kwargs)
+
+
+
+class PublicNoteRequestViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NoteRequestSerializer
+    permission_classes = [permissions.AllowAny]
+    
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'department_name']
+    search_fields = ['course_name', 'department_name', 'message', 'user__username']
+    ordering_fields = ['created_at', 'updated_at']
+    
+    def get_queryset(self):
+        return NoteRequest.objects.exclude(status=NoteRequest.RequestStatus.REJECTED).order_by('-created_at')
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated], url_path='fulfill')
+    def fulfill_request(self, request, pk=None):
+        note_request = self.get_object()
+        if note_request.status != NoteRequest.RequestStatus.PENDING:
+            return Response({"detail": "This request has already been fulfilled or is not available."}, status=status.HTTP_400_BAD_REQUEST)
+        if note_request.user == request.user:
+            return Response({"detail": "You cannot fulfill your own request."}, status=status.HTTP_403_FORBIDDEN)
+        
+        note_serializer = NoteSerializer(data=request.data, context={'request': request})
+        note_serializer.is_valid(raise_exception=True)
+        
+        new_note = note_serializer.save(uploader=request.user)
+        note_request.status = NoteRequest.RequestStatus.FULFILLED
+        note_request.fulfilled_by = request.user
+        note_request.fulfilled_note = new_note
+        note_request.save()
+        response_serializer = self.get_serializer(note_request)
+        return Response({
+            "message": "Request fulfilled successfully! The note has been submitted.",
+            "note_request": response_serializer.data,
+            "submitted_note": note_serializer.data 
+        }, status=status.HTTP_201_CREATED)
+    
+
+
+
 
 
 

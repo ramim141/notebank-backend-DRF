@@ -296,6 +296,8 @@ class NoteRequestSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_full_name = serializers.CharField(source='user.get_full_name', read_only=True)
     user_student_id = serializers.CharField(source='user.student_id', read_only=True)
+    fulfilled_by_username = serializers.CharField(source='fulfilled_by.username', read_only=True, allow_null=True)
+    fulfilled_note_id = serializers.IntegerField(source='fulfilled_note.id', read_only=True, allow_null=True)
 
     class Meta:
         model = NoteRequest
@@ -309,7 +311,9 @@ class NoteRequestSerializer(serializers.ModelSerializer):
             'department_name', 
             'message', 
             'status', 
-            'created_at'
+            'created_at',
+            'fulfilled_by_username',
+            'fulfilled_note_id',
         ]
     
-        read_only_fields = ['user', 'status', 'created_at']
+        read_only_fields = ['user', 'status', 'created_at', 'fulfilled_by_username', 'fulfilled_note_id']
